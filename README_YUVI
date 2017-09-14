@@ -1,0 +1,10 @@
+Load Yuvi backed OpenTSDB in IntelliJ for development
+
+1. ./yuvi_compile.sh
+2. mvn exec:java -Dexec.mainClass="net.opentsdb.tools.TSDMain"
+3. Sample query: http://localhost:4242/api/query?start=365d-ago&m=sum:metric1
+
+Development:
+
+1. Make changes in src-main and src-test. Run the tests to confirm that everything works
+2. Copy the changed files back to src and test directories and submit PRs
