@@ -6,5 +6,5 @@ Load Yuvi backed OpenTSDB in IntelliJ for development
 
 Development:
 
-1. Make changes in src-main and src-test. Run the tests to confirm that everything works
-2. Copy the changed files back to src and test directories and submit PRs
+1. If you are modifying existing files, it's OK to make changes in src-main and src-test. They are symlinks.
+2. If you are adding new files. Create new files in src and test, and then run 'build.sh', so that symlinks are created in the src-main and src-test.
