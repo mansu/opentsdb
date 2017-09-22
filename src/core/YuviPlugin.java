@@ -8,6 +8,7 @@ import com.pinterest.yuvi.tagstore.Query;
 import com.pinterest.yuvi.tagstore.TagMatcher;
 
 import net.opentsdb.query.filter.TagVFilter;
+import net.opentsdb.query.filter.TagVLiteralOrFilter;
 import net.opentsdb.query.filter.TagVWildcardFilter;
 import net.opentsdb.utils.Config;
 import org.slf4j.Logger;
@@ -46,6 +47,21 @@ public class YuviPlugin {
     for (TagVFilter tagVFilter : filters) {
       if (tagVFilter.getType().equals(TagVWildcardFilter.FILTER_NAME)) {
         tagMatchers.add(TagMatcher.wildcardMatch(tagVFilter.getTagk(), "*"));
+      }
+      if (tagVFilter.getType().equals(TagVLiteralOrFilter.FILTER_NAME)) {
+        StringBuffer sb = new StringBuffer();
+        TagVLiteralOrFilter tagVLiteralOrFilter = (TagVLiteralOrFilter)tagVFilter;
+        for (String str : tagVLiteralOrFilter.getLiterals()) {
+          if (sb.length() == 0) {
+            sb.append(str);
+          }
+          else {
+            sb.append("|" + str);
+          }
+        }
+        tagMatchers.add(TagMatcher.literalOrMatch(tagVLiteralOrFilter.getTagk(),
+            sb.toString(), tagVLiteralOrFilter.get_case_insensitive()));
+
       }
     }
     final Query YuviQuery = new Query(metricName, tagMatchers);

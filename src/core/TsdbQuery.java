@@ -16,6 +16,7 @@ import com.pinterest.yuvi.models.Point;
 import com.pinterest.yuvi.models.Points;
 import com.pinterest.yuvi.models.TimeSeries;
 
+import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -546,19 +547,40 @@ final class TsdbQuery implements Query {
       for (int j = 0; j < points.size(); j++)
         LOG.info(points.get(j).toString());
     }
-    YuviDataPoints YuviDataPoints = new YuviDataPoints(timeSeriesList, metricName);
-    DataPoints[] ret = new DataPoints[1];
-    ret[0] = YuviDataPoints;
-    return Deferred.fromResult(ret);
 
     /**
      * TODO: Add GroupBy and Aggregators. For now keep the commented line as a good reference.
      */
 
-//    return findSpans().addCallback(new GroupByAndAggregateCB());
+    TreeMap<byte[], Span> spanMap = new TreeMap<byte[], Span>(
+        new Comparator<byte[]>() {
+          @Override
+          public int compare(byte[] a, byte[] b) {
+            final int length = Math.min(a.length, b.length);
+            if (a == b) {  // Do this after accessing a.length and b.length
+              return 0;    // in order to NPE if either a or b is null.
+            }
+            for (int i = 0; i < length; i++) {
+              if (a[i] != b[i]) {
+                return (a[i] & 0xFF) - (b[i] & 0xFF);  // "promote" to unsigned.
+              }
+            }
+            return a.length - b.length;
+          }
+        });
+
+    for (int i = 0; i < timeSeriesList.size(); i++) {
+      Span span = new Span(tsdb, timeSeriesList.get(i), metricName);
+      byte[] bytes = ByteBuffer.allocate(4).putInt(i).array();
+      spanMap.put(bytes, span);
+    }
+    final Deferred<TreeMap<byte[], Span>> results =
+        new Deferred<TreeMap<byte[], Span>>();
+    results.callback(spanMap);
+    return results.addCallback(new GroupByAndAggregateCB());
   }
 
-  public class YuviDataPoint implements  DataPoint {
+  public static class YuviDataPoint implements DataPoint {
 
     private long timestamp;
     private double value;
@@ -595,161 +617,6 @@ final class TsdbQuery implements Query {
     }
   }
 
-  public class YuviDataPoints implements DataPoints {
-
-    private List<YuviDataPoint> points;
-    private String metricName;
-
-    public YuviDataPoints(List<TimeSeries> timeSeriesList, String metricName) {
-      this.metricName = metricName;
-      points = new ArrayList<YuviDataPoint>();
-      for (TimeSeries timeSeries : timeSeriesList) {
-        for (Point point : timeSeries.getPoints())
-          points.add(new YuviDataPoint(point.getTs(), point.getVal()));
-      }
-      points.sort(new Comparator<YuviDataPoint>() {
-        @Override
-        public int compare(YuviDataPoint lhs, YuviDataPoint rhs) {
-          if (lhs.timestamp() < rhs.timestamp()) {
-            return -1;
-          }
-          else if (lhs.timestamp() > rhs.timestamp()) {
-            return 1;
-          }
-          else {
-            return 0;
-          }
-        }
-      });
-    }
-
-    @Override
-    public String metricName() {
-      return metricName;
-    }
-
-    @Override
-    public Deferred<String> metricNameAsync() {
-      return Deferred.fromResult(metricName);
-    }
-
-    @Override
-    public byte[] metricUID() {
-      return new byte[0];
-    }
-
-    @Override
-    public Map<String, String> getTags() {
-      return new HashMap<String, String>();
-    }
-
-    @Override
-    public Deferred<Map<String, String>> getTagsAsync() {
-      Map<String, String> ret = new HashMap<String, String>();
-      return Deferred.fromResult(ret);
-    }
-
-    @Override
-    public ByteMap<byte[]> getTagUids() {
-      return null;
-    }
-
-    @Override
-    public List<String> getAggregatedTags() {
-      return new ArrayList<String>();
-    }
-
-    @Override
-    public Deferred<List<String>> getAggregatedTagsAsync() {
-      List<String> ret = new ArrayList<String>();
-      return Deferred.fromResult(ret);
-    }
-
-    @Override
-    public List<byte[]> getAggregatedTagUids() {
-      return null;
-    }
-
-    @Override
-    public List<String> getTSUIDs() {
-      return null;
-    }
-
-    @Override
-    public List<Annotation> getAnnotations() {
-      return null;
-    }
-
-    @Override
-    public int size() {
-      return points.size();
-    }
-
-    @Override
-    public int aggregatedSize() {
-      return points.size();
-    }
-
-    @Override
-    public SeekableView iterator() {
-      return new Iterator();
-    }
-
-    @Override
-    public long timestamp(int i) {
-      return points.get(i).timestamp();
-    }
-
-    @Override
-    public boolean isInteger(int i) {
-      return false;
-    }
-
-    @Override
-    public long longValue(int i) {
-      return 0;
-    }
-
-    @Override
-    public double doubleValue(int i) {
-      return points.get(i).doubleValue();
-    }
-
-    @Override
-    public int getQueryIndex() {
-      return 0;
-    }
-
-    private class Iterator implements SeekableView {
-      private int index = -1;
-
-      @Override
-      public boolean hasNext() {
-        return index < points.size() - 1;
-      }
-
-      @Override
-      public DataPoint next() {
-        if (hasNext()) {
-          index++;
-          return points.get(index);
-        }
-        throw new NoSuchElementException("no more elements in " + this);
-      }
-
-      @Override
-      public void remove() {
-        throw new UnsupportedOperationException();
-      }
-
-      @Override
-      public void seek(long timestamp) {
-        throw new UnsupportedOperationException();
-      }
-
-    }
-  }
-
   /**
    * Finds all the {@link Span}s that match this query.
    * This is what actually scans the HBase table and loads the data into
@@ -761,358 +628,358 @@ final class TsdbQuery implements Query {
    * perform the search.
    * @throws IllegalArgumentException if bad data was retrieved from HBase.
    */
-  private Deferred<TreeMap<byte[], Span>> findSpans() throws HBaseException {
-    final short metric_width = tsdb.metrics.width();
-    final TreeMap<byte[], Span> spans = // The key is a row key from HBase.
-        new TreeMap<byte[], Span>(new SpanCmp(
-            (short)(Const.SALT_WIDTH() + metric_width)));
-
-    // Copy only the filters that should trigger a tag resolution. If this list
-    // is empty due to literals or a wildcard star, then we'll save a TON of
-    // UID lookups
-    final List<TagVFilter> scanner_filters;
-    if (filters != null) {
-      scanner_filters = new ArrayList<TagVFilter>(filters.size());
-      for (final TagVFilter filter : filters) {
-        if (filter.postScan()) {
-          scanner_filters.add(filter);
-        }
-      }
-    } else {
-      scanner_filters = null;
-    }
-
-    if (Const.SALT_WIDTH() > 0) {
-      final List<Scanner> scanners = new ArrayList<Scanner>(Const.SALT_BUCKETS());
-      for (int i = 0; i < Const.SALT_BUCKETS(); i++) {
-        scanners.add(getScanner(i));
-      }
-      scan_start_time = DateTime.nanoTime();
-      return new SaltScanner(tsdb, metric, scanners, spans, scanner_filters,
-          delete, query_stats, query_index).scan();
-    }
-
-    scan_start_time = DateTime.nanoTime();
-    final Scanner scanner = getScanner();
-    if (query_stats != null) {
-      query_stats.addScannerId(query_index, 0, scanner.toString());
-    }
-    final Deferred<TreeMap<byte[], Span>> results =
-        new Deferred<TreeMap<byte[], Span>>();
-
-    /**
-     * Scanner callback executed recursively each time we get a set of data
-     * from storage. This is responsible for determining what columns are
-     * returned and issuing requests to load leaf objects.
-     * When the scanner returns a null set of rows, the method initiates the
-     * final callback.
-     */
-    final class ScannerCB implements Callback<Object,
-        ArrayList<ArrayList<KeyValue>>> {
-
-      int nrows = 0;
-      boolean seenAnnotation = false;
-      long scanner_start = DateTime.nanoTime();
-      long timeout = tsdb.getConfig().getLong("tsd.query.timeout");
-      private final Set<String> skips = new HashSet<String>();
-      private final Set<String> keepers = new HashSet<String>();
-      private final int index = 0;       // only used for salted scanners
-      /** nanosecond timestamps */
-      private long fetch_start = 0;      // reset each time we send an RPC to HBase
-      private long fetch_time = 0;       // cumulation of time waiting on HBase
-      private long uid_resolve_time = 0; // cumulation of time resolving UIDs
-      private long uids_resolved = 0;
-      private long compaction_time = 0;  // cumulation of time compacting
-      private long dps_pre_filter = 0;
-      private long rows_pre_filter = 0;
-      private long dps_post_filter = 0;
-      private long rows_post_filter = 0;
-
-      /** Error callback that will capture an exception from AsyncHBase and store
-       * it so we can bubble it up to the caller.
-       */
-      class ErrorCB implements Callback<Object, Exception> {
-        @Override
-        public Object call(final Exception e) throws Exception {
-          LOG.error("Scanner " + scanner + " threw an exception", e);
-          close(e);
-          return null;
-        }
-      }
-
-      /**
-       * Starts the scanner and is called recursively to fetch the next set of
-       * rows from the scanner.
-       * @return The map of spans if loaded successfully, null if no data was
-       * found
-       */
-      public Object scan() {
-        fetch_start = DateTime.nanoTime();
-        return scanner.nextRows().addCallback(this).addErrback(new ErrorCB());
-      }
-
-      /**
-       * Loops through each row of the scanner results and parses out data
-       * points and optional meta data
-       * @return null if no rows were found, otherwise the TreeMap with spans
-       */
-      @Override
-      public Object call(final ArrayList<ArrayList<KeyValue>> rows)
-          throws Exception {
-        fetch_time += DateTime.nanoTime() - fetch_start;
-        try {
-          if (rows == null) {
-            scanlatency.add((int)DateTime.msFromNano(fetch_time));
-            LOG.info(TsdbQuery.this + " matched " + nrows + " rows in " +
-                spans.size() + " spans in " + DateTime.msFromNano(fetch_time) + "ms");
-            close(null);
-            return null;
-          }
-
-          if (timeout > 0 && DateTime.msFromNanoDiff(
-              DateTime.nanoTime(), scanner_start) > timeout) {
-            throw new InterruptedException("Query timeout exceeded!");
-          }
-
-          rows_pre_filter += rows.size();
-
-          // used for UID resolution if a filter is involved
-          final List<Deferred<Object>> lookups =
-              filters != null && !filters.isEmpty() ?
-              new ArrayList<Deferred<Object>>(rows.size()) : null;
-
-          for (final ArrayList<KeyValue> row : rows) {
-            final byte[] key = row.get(0).key();
-            if (Bytes.memcmp(metric, key, 0, metric_width) != 0) {
-              scanner.close();
-              throw new IllegalDataException(
-                  "HBase returned a row that doesn't match"
-                      + " our scanner (" + scanner + ")! " + row + " does not start"
-                      + " with " + Arrays.toString(metric));
-            }
-
-            // calculate estimated data point count. We don't want to deserialize
-            // the byte arrays so we'll just get a rough estimate of compacted
-            // columns.
-            for (final KeyValue kv : row) {
-              if (kv.qualifier().length % 2 == 0) {
-                if (kv.qualifier().length == 2 || kv.qualifier().length == 4) {
-                  ++dps_pre_filter;
-                } else {
-                  // for now we'll assume that all compacted columns are of the
-                  // same precision. This is likely incorrect.
-                  if (Internal.inMilliseconds(kv.qualifier())) {
-                    dps_pre_filter += (kv.qualifier().length / 4);
-                  } else {
-                    dps_pre_filter += (kv.qualifier().length / 2);
-                  }
-                }
-              } else if (kv.qualifier()[0] == AppendDataPoints.APPEND_COLUMN_PREFIX) {
-                // with appends we don't have a good rough estimate as the length
-                // can vary widely with the value length variability. Therefore we
-                // have to iterate.
-                int idx = 0;
-                int qlength = 0;
-                while (idx < kv.value().length) {
-                  qlength = Internal.getQualifierLength(kv.value(), idx);
-                  idx += qlength + Internal.getValueLengthFromQualifier(kv.value(), idx);
-                  ++dps_pre_filter;
-                }
-              }
-            }
-
-            // If any filters have made it this far then we need to resolve
-            // the row key UIDs to their names for string comparison. We'll
-            // try to avoid the resolution with some sets but we may dupe
-            // resolve a few times.
-            // TODO - more efficient resolution
-            // TODO - byte set instead of a string for the uid may be faster
-            if (scanner_filters != null && !scanner_filters.isEmpty()) {
-              lookups.clear();
-              final String tsuid =
-                  UniqueId.uidToString(UniqueId.getTSUIDFromKey(key,
-                      TSDB.metrics_width(), Const.TIMESTAMP_BYTES));
-              if (skips.contains(tsuid)) {
-                continue;
-              }
-              if (!keepers.contains(tsuid)) {
-                final long uid_start = DateTime.nanoTime();
-
-                /** CB to called after all of the UIDs have been resolved */
-                class MatchCB implements Callback<Object, ArrayList<Boolean>> {
-                  @Override
-                  public Object call(final ArrayList<Boolean> matches)
-                      throws Exception {
-                    for (final boolean matched : matches) {
-                      if (!matched) {
-                        skips.add(tsuid);
-                        return null;
-                      }
-                    }
-                    // matched all, good data
-                    keepers.add(tsuid);
-                    processRow(key, row);
-                    return null;
-                  }
-                }
-
-                /** Resolves all of the row key UIDs to their strings for filtering */
-                class GetTagsCB implements
-                                Callback<Deferred<ArrayList<Boolean>>, Map<String, String>> {
-                  @Override
-                  public Deferred<ArrayList<Boolean>> call(
-                      final Map<String, String> tags) throws Exception {
-                    uid_resolve_time += (DateTime.nanoTime() - uid_start);
-                    uids_resolved += tags.size();
-                    final List<Deferred<Boolean>> matches =
-                        new ArrayList<Deferred<Boolean>>(scanner_filters.size());
-
-                    for (final TagVFilter filter : scanner_filters) {
-                      matches.add(filter.match(tags));
-                    }
-
-                    return Deferred.group(matches);
-                  }
-                }
-
-                lookups.add(Tags.getTagsAsync(tsdb, key)
-                    .addCallbackDeferring(new GetTagsCB())
-                    .addBoth(new MatchCB()));
-              } else {
-                processRow(key, row);
-              }
-            } else {
-              processRow(key, row);
-            }
-          }
-
-          // either we need to wait on the UID resolutions or we can go ahead
-          // if we don't have filters.
-          if (lookups != null && lookups.size() > 0) {
-            class GroupCB implements Callback<Object, ArrayList<Object>> {
-              @Override
-              public Object call(final ArrayList<Object> group) throws Exception {
-                return scan();
-              }
-            }
-            return Deferred.group(lookups).addCallback(new GroupCB());
-          } else {
-            return scan();
-          }
-        } catch (Exception e) {
-          close(e);
-          return null;
-        }
-      }
+//  private Deferred<TreeMap<byte[], Span>> findSpans() throws HBaseException {
+//    final short metric_width = tsdb.metrics.width();
+//    final TreeMap<byte[], Span> spans = // The key is a row key from HBase.
+//        new TreeMap<byte[], Span>(new SpanCmp(
+//            (short)(Const.SALT_WIDTH() + metric_width)));
+//
+//    // Copy only the filters that should trigger a tag resolution. If this list
+//    // is empty due to literals or a wildcard star, then we'll save a TON of
+//    // UID lookups
+//    final List<TagVFilter> scanner_filters;
+//    if (filters != null) {
+//      scanner_filters = new ArrayList<TagVFilter>(filters.size());
+//      for (final TagVFilter filter : filters) {
+//        if (filter.postScan()) {
+//          scanner_filters.add(filter);
+//        }
+//      }
+//    } else {
+//      scanner_filters = null;
+//    }
+//
+//    if (Const.SALT_WIDTH() > 0) {
+//      final List<Scanner> scanners = new ArrayList<Scanner>(Const.SALT_BUCKETS());
+//      for (int i = 0; i < Const.SALT_BUCKETS(); i++) {
+//        scanners.add(getScanner(i));
+//      }
+//      scan_start_time = DateTime.nanoTime();
+//      return new SaltScanner(tsdb, metric, scanners, spans, scanner_filters,
+//          delete, query_stats, query_index).scan();
+//    }
+//
+//    scan_start_time = DateTime.nanoTime();
+//    final Scanner scanner = getScanner();
+//    if (query_stats != null) {
+//      query_stats.addScannerId(query_index, 0, scanner.toString());
+//    }
+//    final Deferred<TreeMap<byte[], Span>> results =
+//        new Deferred<TreeMap<byte[], Span>>();
+//
+//    /**
+//     * Scanner callback executed recursively each time we get a set of data
+//     * from storage. This is responsible for determining what columns are
+//     * returned and issuing requests to load leaf objects.
+//     * When the scanner returns a null set of rows, the method initiates the
+//     * final callback.
+//     */
+//    final class ScannerCB implements Callback<Object,
+//        ArrayList<ArrayList<KeyValue>>> {
+//
+//      int nrows = 0;
+//      boolean seenAnnotation = false;
+//      long scanner_start = DateTime.nanoTime();
+//      long timeout = tsdb.getConfig().getLong("tsd.query.timeout");
+//      private final Set<String> skips = new HashSet<String>();
+//      private final Set<String> keepers = new HashSet<String>();
+//      private final int index = 0;       // only used for salted scanners
+//      /** nanosecond timestamps */
+//      private long fetch_start = 0;      // reset each time we send an RPC to HBase
+//      private long fetch_time = 0;       // cumulation of time waiting on HBase
+//      private long uid_resolve_time = 0; // cumulation of time resolving UIDs
+//      private long uids_resolved = 0;
+//      private long compaction_time = 0;  // cumulation of time compacting
+//      private long dps_pre_filter = 0;
+//      private long rows_pre_filter = 0;
+//      private long dps_post_filter = 0;
+//      private long rows_post_filter = 0;
+//
+//      /** Error callback that will capture an exception from AsyncHBase and store
+//       * it so we can bubble it up to the caller.
+//       */
+//      class ErrorCB implements Callback<Object, Exception> {
+//        @Override
+//        public Object call(final Exception e) throws Exception {
+//          LOG.error("Scanner " + scanner + " threw an exception", e);
+//          close(e);
+//          return null;
+//        }
+//      }
+//
+//      /**
+//       * Starts the scanner and is called recursively to fetch the next set of
+//       * rows from the scanner.
+//       * @return The map of spans if loaded successfully, null if no data was
+//       * found
+//       */
+//      public Object scan() {
+//        fetch_start = DateTime.nanoTime();
+//
+//      }
+//
+//      /**
+//       * Loops through each row of the scanner results and parses out data
+//       * points and optional meta data
+//       * @return null if no rows were found, otherwise the TreeMap with spans
+//       */
+//      @Override
+//      public Object call(final ArrayList<ArrayList<KeyValue>> rows)
+//          throws Exception {
+//        fetch_time += DateTime.nanoTime() - fetch_start;
+//        try {
+//          if (rows == null) {
+//            scanlatency.add((int)DateTime.msFromNano(fetch_time));
+//            LOG.info(TsdbQuery.this + " matched " + nrows + " rows in " +
+//                spans.size() + " spans in " + DateTime.msFromNano(fetch_time) + "ms");
+//            close(null);
+//            return null;
+//          }
+//
+//          if (timeout > 0 && DateTime.msFromNanoDiff(
+//              DateTime.nanoTime(), scanner_start) > timeout) {
+//            throw new InterruptedException("Query timeout exceeded!");
+//          }
+//
+//          rows_pre_filter += rows.size();
+//
+//          // used for UID resolution if a filter is involved
+//          final List<Deferred<Object>> lookups =
+//              filters != null && !filters.isEmpty() ?
+//              new ArrayList<Deferred<Object>>(rows.size()) : null;
+//
+//          for (final ArrayList<KeyValue> row : rows) {
+//            final byte[] key = row.get(0).key();
+//            if (Bytes.memcmp(metric, key, 0, metric_width) != 0) {
+//              scanner.close();
+//              throw new IllegalDataException(
+//                  "HBase returned a row that doesn't match"
+//                      + " our scanner (" + scanner + ")! " + row + " does not start"
+//                      + " with " + Arrays.toString(metric));
+//            }
+//
+//            // calculate estimated data point count. We don't want to deserialize
+//            // the byte arrays so we'll just get a rough estimate of compacted
+//            // columns.
+//            for (final KeyValue kv : row) {
+//              if (kv.qualifier().length % 2 == 0) {
+//                if (kv.qualifier().length == 2 || kv.qualifier().length == 4) {
+//                  ++dps_pre_filter;
+//                } else {
+//                  // for now we'll assume that all compacted columns are of the
+//                  // same precision. This is likely incorrect.
+//                  if (Internal.inMilliseconds(kv.qualifier())) {
+//                    dps_pre_filter += (kv.qualifier().length / 4);
+//                  } else {
+//                    dps_pre_filter += (kv.qualifier().length / 2);
+//                  }
+//                }
+//              } else if (kv.qualifier()[0] == AppendDataPoints.APPEND_COLUMN_PREFIX) {
+//                // with appends we don't have a good rough estimate as the length
+//                // can vary widely with the value length variability. Therefore we
+//                // have to iterate.
+//                int idx = 0;
+//                int qlength = 0;
+//                while (idx < kv.value().length) {
+//                  qlength = Internal.getQualifierLength(kv.value(), idx);
+//                  idx += qlength + Internal.getValueLengthFromQualifier(kv.value(), idx);
+//                  ++dps_pre_filter;
+//                }
+//              }
+//            }
+//
+//            // If any filters have made it this far then we need to resolve
+//            // the row key UIDs to their names for string comparison. We'll
+//            // try to avoid the resolution with some sets but we may dupe
+//            // resolve a few times.
+//            // TODO - more efficient resolution
+//            // TODO - byte set instead of a string for the uid may be faster
+//            if (scanner_filters != null && !scanner_filters.isEmpty()) {
+//              lookups.clear();
+//              final String tsuid =
+//                  UniqueId.uidToString(UniqueId.getTSUIDFromKey(key,
+//                      TSDB.metrics_width(), Const.TIMESTAMP_BYTES));
+//              if (skips.contains(tsuid)) {
+//                continue;
+//              }
+//              if (!keepers.contains(tsuid)) {
+//                final long uid_start = DateTime.nanoTime();
+//
+//                /** CB to called after all of the UIDs have been resolved */
+//                class MatchCB implements Callback<Object, ArrayList<Boolean>> {
+//                  @Override
+//                  public Object call(final ArrayList<Boolean> matches)
+//                      throws Exception {
+//                    for (final boolean matched : matches) {
+//                      if (!matched) {
+//                        skips.add(tsuid);
+//                        return null;
+//                      }
+//                    }
+//                    // matched all, good data
+//                    keepers.add(tsuid);
+//                    processRow(key, row);
+//                    return null;
+//                  }
+//                }
+//
+//                /** Resolves all of the row key UIDs to their strings for filtering */
+//                class GetTagsCB implements
+//                                Callback<Deferred<ArrayList<Boolean>>, Map<String, String>> {
+//                  @Override
+//                  public Deferred<ArrayList<Boolean>> call(
+//                      final Map<String, String> tags) throws Exception {
+//                    uid_resolve_time += (DateTime.nanoTime() - uid_start);
+//                    uids_resolved += tags.size();
+//                    final List<Deferred<Boolean>> matches =
+//                        new ArrayList<Deferred<Boolean>>(scanner_filters.size());
+//
+//                    for (final TagVFilter filter : scanner_filters) {
+//                      matches.add(filter.match(tags));
+//                    }
+//
+//                    return Deferred.group(matches);
+//                  }
+//                }
+//
+//                lookups.add(Tags.getTagsAsync(tsdb, key)
+//                    .addCallbackDeferring(new GetTagsCB())
+//                    .addBoth(new MatchCB()));
+//              } else {
+//                processRow(key, row);
+//              }
+//            } else {
+//              processRow(key, row);
+//            }
+//          }
+//
+//          // either we need to wait on the UID resolutions or we can go ahead
+//          // if we don't have filters.
+//          if (lookups != null && lookups.size() > 0) {
+//            class GroupCB implements Callback<Object, ArrayList<Object>> {
+//              @Override
+//              public Object call(final ArrayList<Object> group) throws Exception {
+//                return scan();
+//              }
+//            }
+//            return Deferred.group(lookups).addCallback(new GroupCB());
+//          } else {
+//            return scan();
+//          }
+//        } catch (Exception e) {
+//          close(e);
+//          return null;
+//        }
+//      }
 
       /**
        * Finds or creates the span for this row, compacts it and stores it.
        * @param key The row key to use for fetching the span
        * @param row The row to add
        */
-      void processRow(final byte[] key, final ArrayList<KeyValue> row) {
-        ++rows_post_filter;
-        if (delete) {
-          final DeleteRequest del = new DeleteRequest(tsdb.dataTable(), key);
-          tsdb.getClient().delete(del);
-        }
+//      void processRow(final byte[] key, final ArrayList<KeyValue> row) {
+//        ++rows_post_filter;
+//        if (delete) {
+//          final DeleteRequest del = new DeleteRequest(tsdb.dataTable(), key);
+//          tsdb.getClient().delete(del);
+//        }
+//
+//        // calculate estimated data point count. We don't want to deserialize
+//        // the byte arrays so we'll just get a rough estimate of compacted
+//        // columns.
+//        for (final KeyValue kv : row) {
+//          if (kv.qualifier().length % 2 == 0) {
+//            if (kv.qualifier().length == 2 || kv.qualifier().length == 4) {
+//              ++dps_post_filter;
+//            } else {
+//              // for now we'll assume that all compacted columns are of the
+//              // same precision. This is likely incorrect.
+//              if (Internal.inMilliseconds(kv.qualifier())) {
+//                dps_post_filter += (kv.qualifier().length / 4);
+//              } else {
+//                dps_post_filter += (kv.qualifier().length / 2);
+//              }
+//            }
+//          } else if (kv.qualifier()[0] == AppendDataPoints.APPEND_COLUMN_PREFIX) {
+//            // with appends we don't have a good rough estimate as the length
+//            // can vary widely with the value length variability. Therefore we
+//            // have to iterate.
+//            int idx = 0;
+//            int qlength = 0;
+//            while (idx < kv.value().length) {
+//              qlength = Internal.getQualifierLength(kv.value(), idx);
+//              idx += qlength + Internal.getValueLengthFromQualifier(kv.value(), idx);
+//              ++dps_post_filter;
+//            }
+//          }
+//        }
+//
+//        Span datapoints = spans.get(key);
+//        if (datapoints == null) {
+//          datapoints = new Span(tsdb);
+//          spans.put(key, datapoints);
+//        }
+//        final long compaction_start = DateTime.nanoTime();
+//        final KeyValue compacted =
+//            tsdb.compact(row, datapoints.getAnnotations());
+//        compaction_time += (DateTime.nanoTime() - compaction_start);
+//        seenAnnotation |= !datapoints.getAnnotations().isEmpty();
+//        if (compacted != null) { // Can be null if we ignored all KVs.
+//          datapoints.addRow(compacted);
+//          ++nrows;
+//        }
+//      }
 
-        // calculate estimated data point count. We don't want to deserialize
-        // the byte arrays so we'll just get a rough estimate of compacted
-        // columns.
-        for (final KeyValue kv : row) {
-          if (kv.qualifier().length % 2 == 0) {
-            if (kv.qualifier().length == 2 || kv.qualifier().length == 4) {
-              ++dps_post_filter;
-            } else {
-              // for now we'll assume that all compacted columns are of the
-              // same precision. This is likely incorrect.
-              if (Internal.inMilliseconds(kv.qualifier())) {
-                dps_post_filter += (kv.qualifier().length / 4);
-              } else {
-                dps_post_filter += (kv.qualifier().length / 2);
-              }
-            }
-          } else if (kv.qualifier()[0] == AppendDataPoints.APPEND_COLUMN_PREFIX) {
-            // with appends we don't have a good rough estimate as the length
-            // can vary widely with the value length variability. Therefore we
-            // have to iterate.
-            int idx = 0;
-            int qlength = 0;
-            while (idx < kv.value().length) {
-              qlength = Internal.getQualifierLength(kv.value(), idx);
-              idx += qlength + Internal.getValueLengthFromQualifier(kv.value(), idx);
-              ++dps_post_filter;
-            }
-          }
-        }
-
-        Span datapoints = spans.get(key);
-        if (datapoints == null) {
-          datapoints = new Span(tsdb);
-          spans.put(key, datapoints);
-        }
-        final long compaction_start = DateTime.nanoTime();
-        final KeyValue compacted =
-            tsdb.compact(row, datapoints.getAnnotations());
-        compaction_time += (DateTime.nanoTime() - compaction_start);
-        seenAnnotation |= !datapoints.getAnnotations().isEmpty();
-        if (compacted != null) { // Can be null if we ignored all KVs.
-          datapoints.addRow(compacted);
-          ++nrows;
-        }
-      }
-
-      void close(final Exception e) {
-        scanner.close();
-
-        if (query_stats != null) {
-          query_stats.addScannerStat(query_index, index,
-              QueryStat.SCANNER_TIME, DateTime.nanoTime() - scan_start_time);
-
-          // Scanner Stats
-           /* Uncomment when AsyncHBase has this feature:
-           query_stats.addScannerStat(query_index, index, 
-               QueryStat.ROWS_FROM_STORAGE, scanner.getRowsFetched());
-           query_stats.addScannerStat(query_index, index, 
-               QueryStat.COLUMNS_FROM_STORAGE, scanner.getColumnsFetched());
-           query_stats.addScannerStat(query_index, index, 
-               QueryStat.BYTES_FROM_STORAGE, scanner.getBytesFetched()); */
-          query_stats.addScannerStat(query_index, index,
-              QueryStat.HBASE_TIME, fetch_time);
-          query_stats.addScannerStat(query_index, index,
-              QueryStat.SUCCESSFUL_SCAN, e == null ? 1 : 0);
-
-          // Post Scan stats
-          query_stats.addScannerStat(query_index, index,
-              QueryStat.ROWS_PRE_FILTER, rows_pre_filter);
-          query_stats.addScannerStat(query_index, index,
-              QueryStat.DPS_PRE_FILTER, dps_pre_filter);
-          query_stats.addScannerStat(query_index, index,
-              QueryStat.ROWS_POST_FILTER, rows_post_filter);
-          query_stats.addScannerStat(query_index, index,
-              QueryStat.DPS_POST_FILTER, dps_post_filter);
-          query_stats.addScannerStat(query_index, index,
-              QueryStat.SCANNER_UID_TO_STRING_TIME, uid_resolve_time);
-          query_stats.addScannerStat(query_index, index,
-              QueryStat.UID_PAIRS_RESOLVED, uids_resolved);
-          query_stats.addScannerStat(query_index, index,
-              QueryStat.COMPACTION_TIME, compaction_time);
-        }
-
-        if (e != null) {
-          results.callback(e);
-        } else if (nrows < 1 && !seenAnnotation) {
-          results.callback(null);
-        } else {
-          results.callback(spans);
-        }
-      }
-    }
-
-    new ScannerCB().scan();
-    return results;
-  }
+//      void close(final Exception e) {
+//        scanner.close();
+//
+//        if (query_stats != null) {
+//          query_stats.addScannerStat(query_index, index,
+//              QueryStat.SCANNER_TIME, DateTime.nanoTime() - scan_start_time);
+//
+//          // Scanner Stats
+//           /* Uncomment when AsyncHBase has this feature:
+//           query_stats.addScannerStat(query_index, index,
+//               QueryStat.ROWS_FROM_STORAGE, scanner.getRowsFetched());
+//           query_stats.addScannerStat(query_index, index,
+//               QueryStat.COLUMNS_FROM_STORAGE, scanner.getColumnsFetched());
+//           query_stats.addScannerStat(query_index, index,
+//               QueryStat.BYTES_FROM_STORAGE, scanner.getBytesFetched()); */
+//          query_stats.addScannerStat(query_index, index,
+//              QueryStat.HBASE_TIME, fetch_time);
+//          query_stats.addScannerStat(query_index, index,
+//              QueryStat.SUCCESSFUL_SCAN, e == null ? 1 : 0);
+//
+//          // Post Scan stats
+//          query_stats.addScannerStat(query_index, index,
+//              QueryStat.ROWS_PRE_FILTER, rows_pre_filter);
+//          query_stats.addScannerStat(query_index, index,
+//              QueryStat.DPS_PRE_FILTER, dps_pre_filter);
+//          query_stats.addScannerStat(query_index, index,
+//              QueryStat.ROWS_POST_FILTER, rows_post_filter);
+//          query_stats.addScannerStat(query_index, index,
+//              QueryStat.DPS_POST_FILTER, dps_post_filter);
+//          query_stats.addScannerStat(query_index, index,
+//              QueryStat.SCANNER_UID_TO_STRING_TIME, uid_resolve_time);
+//          query_stats.addScannerStat(query_index, index,
+//              QueryStat.UID_PAIRS_RESOLVED, uids_resolved);
+//          query_stats.addScannerStat(query_index, index,
+//              QueryStat.COMPACTION_TIME, compaction_time);
+//        }
+//
+//        if (e != null) {
+//          results.callback(e);
+//        } else if (nrows < 1 && !seenAnnotation) {
+//          results.callback(null);
+//        } else {
+//          results.callback(spans);
+//        }
+//      }
+//    }
+//
+//    new ScannerCB().scan();
+//    return results;
+//  }
 
   /**
    * Callback that should be attached the the output of
