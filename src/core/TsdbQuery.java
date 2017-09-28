@@ -15,6 +15,7 @@ package net.opentsdb.core;
 import com.pinterest.yuvi.models.Point;
 import com.pinterest.yuvi.models.Points;
 import com.pinterest.yuvi.models.TimeSeries;
+import com.pinterest.yuvi.tagstore.Tag;
 
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
@@ -376,6 +377,7 @@ final class TsdbQuery implements Query {
       }
       return Deferred.fromResult(null);
     } else {
+      LOG.info("Triggers the group by resolution if we had filters to resolve");
       /** Triggers the group by resolution if we had filters to resolve */
       class FilterCB implements Callback<Object, ArrayList<byte[]>> {
         @Override
@@ -394,6 +396,7 @@ final class TsdbQuery implements Query {
             final List<Deferred<byte[]>> deferreds =
                 new ArrayList<Deferred<byte[]>>(filters.size());
             for (final TagVFilter filter : filters) {
+              LOG.info("filter = " + filter.toString());
               deferreds.add(filter.resolveTagkName(tsdb));
             }
             return Deferred.group(deferreds).addCallback(new FilterCB());
@@ -409,6 +412,8 @@ final class TsdbQuery implements Query {
        * TODO: Remove all logic that need metric IDs.
        * For now keep the commented lines as a good reference.
        */
+
+
 
       // fire off the callback chain by resolving the metric first
 //       return tsdb.metrics.getIdAsync(sub_query.getMetric())
@@ -444,11 +449,15 @@ final class TsdbQuery implements Query {
    * values pulled from the filters.
    */
   private void findGroupBys() {
+    LOG.info("entering findGroupBys()");
     if (filters == null || filters.isEmpty()) {
       return;
     }
 
     row_key_literals = new ByteMap<byte[][]>();
+
+    for (TagVFilter tagVFilter: filters)
+      LOG.info(tagVFilter.toString());
 
     Collections.sort(filters);
     final Iterator<TagVFilter> current_iterator = filters.iterator();
@@ -467,6 +476,7 @@ final class TsdbQuery implements Query {
         current = current_iterator.next();
         if (tagk == null) {
           tagk = new byte[TSDB.tagk_width()];
+          LOG.info(current.toString());
           System.arraycopy(current.getTagkBytes(), 0, tagk, 0, TSDB.tagk_width());
         }
 
@@ -1009,6 +1019,49 @@ final class TsdbQuery implements Query {
         return NO_RESULT;
       }
 
+      for (final Span span: spans.values()) {
+        String[] tokens = span.getFullMetricName().split(" ");
+        if (tokens.length < 1) {
+          throw new Exception("Illegal tags retrieved from Yuvi");
+        }
+
+        Map<String, String> tagsInTS = new HashMap<String, String>();
+        for (int i = 1; i < tokens.length; i++) {
+          String token = tokens[i];
+          int index = token.indexOf('=');
+          if (index == 0 || index == token.length()) {
+            throw new Exception("Illegal tags retrieved from Yuvi");
+          }
+          String tagk = token.substring(0, index);
+          String tagv = token.substring(index + 1);
+          tagsInTS.put(tagk, tagv);
+        }
+
+        StringBuilder sb = new StringBuilder();
+        for (TagVFilter tagVFilter : filters) {
+          if (!tagVFilter.isGroupBy()) {
+            continue;
+          }
+          String tagk = tagVFilter.getTagk();
+          String tagv;
+          if (!tagsInTS.containsKey(tagk)) {
+            tagv = "";
+          }
+          else {
+            tagv = tagsInTS.get(tagk);
+          }
+          if (sb.length() == 0) {
+            sb.append(tagk + "=" + tagv);
+          }
+          else {
+            sb.append("," + tagk + "=" + tagv);
+          }
+        }
+        String groupKey = sb.toString();
+        span.setGroupKey(groupKey);
+        span.setTagsInTS(tagsInTS);
+      }
+
       // The raw aggregator skips group bys and ignores downsampling
       if (aggregator == Aggregators.NONE) {
         final SpanGroup[] groups = new SpanGroup[spans.size()];
@@ -1032,7 +1085,22 @@ final class TsdbQuery implements Query {
         return groups;
       }
 
-      if (group_bys == null) {
+      boolean isGroupBy = false;
+      for (TagVFilter tagVFilter : filters) {
+        if (tagVFilter.isGroupBy()) {
+          isGroupBy = true;
+          break;
+        }
+      }
+
+      LOG.info("group_bys = " + group_bys);
+
+      for (Span span : spans.values()) {
+        LOG.info(span.getFullMetricName());
+      }
+
+//      if (group_bys == null) {
+      if (!isGroupBy) {
         // We haven't been asked to find groups, so let's put all the spans
         // together in the same group.
         final SpanGroup group = new SpanGroup(tsdb,
@@ -1051,6 +1119,28 @@ final class TsdbQuery implements Query {
         return new SpanGroup[] { group };
       }
 
+      LOG.info("starting GroupBy");
+      Map<String, SpanGroup> groups = new HashMap<String, SpanGroup>();
+      for (Span span : spans.values()) {
+
+        String key = span.getGroupKey();
+        if (key.length() == 0)
+          throw new Exception("Illegal group key found");
+        SpanGroup thegroup = groups.get(key);
+        if (thegroup == null) {
+          thegroup = new SpanGroup(tsdb, getScanStartTimeSeconds(),
+              getScanEndTimeSeconds(),
+              null, rate, rate_options, aggregator,
+              downsampler,
+              getStartTime(),
+              getEndTime(),
+              query_index);
+          groups.put(key, thegroup);
+        }
+        thegroup.add(span);
+      }
+
+
       // Maps group value IDs to the SpanGroup for those values. Say we've
       // been asked to group by two things: foo=* bar=* Then the keys in this
       // map will contain all the value IDs combinations we've seen. If the
@@ -1062,47 +1152,48 @@ final class TsdbQuery implements Query {
       // then the map will have two keys:
       // - one for the LOL-OMG combination: [0, 0, 1, 0, 0, 4] and,
       // - one for the LOL-WTF combination: [0, 0, 1, 0, 0, 3].
-      final ByteMap<SpanGroup> groups = new ByteMap<SpanGroup>();
-      final short value_width = tsdb.tag_values.width();
-      final byte[] group = new byte[group_bys.size() * value_width];
-      for (final Map.Entry<byte[], Span> entry : spans.entrySet()) {
-        final byte[] row = entry.getKey();
-        byte[] value_id = null;
-        int i = 0;
-        // TODO(tsuna): The following loop has a quadratic behavior. We can
-        // make it much better since both the row key and group_bys are sorted.
-        for (final byte[] tag_id : group_bys) {
-          value_id = Tags.getValueId(tsdb, row, tag_id);
-          if (value_id == null) {
-            break;
-          }
-          System.arraycopy(value_id, 0, group, i, value_width);
-          i += value_width;
-        }
-        if (value_id == null) {
-          LOG.error("WTF? Dropping span for row " + Arrays.toString(row)
-              + " as it had no matching tag from the requested groups,"
-              + " which is unexpected. Query=" + this);
-          continue;
-        }
-        //LOG.info("Span belongs to group " + Arrays.toString(group) + ": " + Arrays.toString(row));
-        SpanGroup thegroup = groups.get(group);
-        if (thegroup == null) {
-          thegroup = new SpanGroup(tsdb, getScanStartTimeSeconds(),
-              getScanEndTimeSeconds(),
-              null, rate, rate_options, aggregator,
-              downsampler,
-              getStartTime(),
-              getEndTime(),
-              query_index);
-          // Copy the array because we're going to keep `group' and overwrite
-          // its contents. So we want the collection to have an immutable copy.
-          final byte[] group_copy = new byte[group.length];
-          System.arraycopy(group, 0, group_copy, 0, group.length);
-          groups.put(group_copy, thegroup);
-        }
-        thegroup.add(entry.getValue());
-      }
+//      LOG.info("GroupID");
+//      final ByteMap<SpanGroup> groups = new ByteMap<SpanGroup>();
+//      final short value_width = tsdb.tag_values.width();
+//      final byte[] group = new byte[group_bys.size() * value_width];
+//      for (final Map.Entry<byte[], Span> entry : spans.entrySet()) {
+//        final byte[] row = entry.getKey();
+//        byte[] value_id = null;
+//        int i = 0;
+//        // TODO(tsuna): The following loop has a quadratic behavior. We can
+//        // make it much better since both the row key and group_bys are sorted.
+//        for (final byte[] tag_id : group_bys) {
+//          value_id = Tags.getValueId(tsdb, row, tag_id);
+//          if (value_id == null) {
+//            break;
+//          }
+//          System.arraycopy(value_id, 0, group, i, value_width);
+//          i += value_width;
+//        }
+//        if (value_id == null) {
+//          LOG.error("WTF? Dropping span for row " + Arrays.toString(row)
+//              + " as it had no matching tag from the requested groups,"
+//              + " which is unexpected. Query=" + this);
+//          continue;
+//        }
+//        //LOG.info("Span belongs to group " + Arrays.toString(group) + ": " + Arrays.toString(row));
+//        SpanGroup thegroup = groups.get(group);
+//        if (thegroup == null) {
+//          thegroup = new SpanGroup(tsdb, getScanStartTimeSeconds(),
+//              getScanEndTimeSeconds(),
+//              null, rate, rate_options, aggregator,
+//              downsampler,
+//              getStartTime(),
+//              getEndTime(),
+//              query_index);
+//          // Copy the array because we're going to keep `group' and overwrite
+//          // its contents. So we want the collection to have an immutable copy.
+//          final byte[] group_copy = new byte[group.length];
+//          System.arraycopy(group, 0, group_copy, 0, group.length);
+//          groups.put(group_copy, thegroup);
+//        }
+//        thegroup.add(entry.getValue());
+//      }
       //for (final Map.Entry<byte[], SpanGroup> entry : groups) {
       // LOG.info("group for " + Arrays.toString(entry.getKey()) + ": " + entry.getValue());
       //}

@@ -57,8 +57,30 @@ class Span implements DataPoints {
    */
 //  private boolean sorted;
 
+  private String fullMetricName;
+
   private List<YuviDataPoint> points;
   private String metricName;
+
+  public Map<String, String> getTagsInTS() {
+    return tagsInTS;
+  }
+
+  public void setTagsInTS(Map<String, String> tagsInTS) {
+    this.tagsInTS = tagsInTS;
+  }
+
+  private Map<String, String> tagsInTS;
+
+  public String getGroupKey() {
+    return groupKey;
+  }
+
+  public void setGroupKey(String groupKey) {
+    this.groupKey = groupKey;
+  }
+
+  private String groupKey;
 
   Span(final TSDB tsdb) {
     this.tsdb = tsdb;
@@ -71,6 +93,7 @@ class Span implements DataPoints {
   Span(final TSDB tsdb, TimeSeries timeSeries, String metricName) {
     this.tsdb = tsdb;
     this.metricName = metricName;
+    this.fullMetricName = timeSeries.getMetric();
     points = new ArrayList<YuviDataPoint>();
     for (Point point : timeSeries.getPoints())
       points.add(new YuviDataPoint(point.getTs(), point.getVal()));
@@ -112,6 +135,10 @@ class Span implements DataPoints {
 //    } catch (Exception e) {
 //      throw new RuntimeException("Should never be here", e);
 //    }
+  }
+
+  public String getFullMetricName() {
+    return fullMetricName;
   }
   
   public Deferred<String> metricNameAsync() {

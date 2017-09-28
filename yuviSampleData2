@@ -1,0 +1,9 @@
+put sys.cpu.system 1489647603 0102040101 dc=dal host=web01
+put sys.cpu.system 1489647609 0102040102 dc=dal host=web02
+put sys.cpu.system 1489647615 0102040103 dc=dal host=web03
+put sys.cpu.system 1489647621 010101 host=web01
+put sys.cpu.system 1489647627 0101010306 host=web01 owner=jdoe
+put sys.cpu.system 1489647633 0102050101 dc=lax host=web01
+put sys.cpu.system 1489647639 0102050102 dc=lax host=web02
+put sys.cpu.user 1489647645 0202040101 dc=dal host=web01
+put sys.cpu.user 1489647651 0202040102 dc=dal host=web02

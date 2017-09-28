@@ -254,10 +254,10 @@ final class SpanGroup implements DataPoints {
    * fall within our time range, this method will silently ignore that span.
    */
   void add(final Span span) {
-    if (tags != null) {
-      throw new AssertionError("The set of tags has already been computed"
-                               + ", you can't add more Spans to " + this);
-    }
+//    if (tags != null) {
+//      throw new AssertionError("The set of tags has already been computed"
+//                               + ", you can't add more Spans to " + this);
+//    }
 
     // normalize timestamps to milliseconds for proper comparison
     final long start = (start_time & Const.SECOND_MASK) == 0 ? 
@@ -295,6 +295,44 @@ final class SpanGroup implements DataPoints {
       if (first_dp <= end && last_dp >= start) {
         this.spans.add(span);
         annotations.addAll(span.getAnnotations());
+      }
+    }
+
+    updateTagsAndAggregatedTagsforYuvi(span.getTagsInTS());
+  }
+
+  private void updateTagsAndAggregatedTagsforYuvi(final Map<String, String> tagsInTS) {
+    if (tags == null || aggregated_tags == null) {
+      tags = new HashMap<String, String>();
+      aggregated_tags = new ArrayList<String>();
+      for (Map.Entry<String, String> entry : tagsInTS.entrySet()) {
+        tags.put(entry.getKey(), entry.getValue());
+      }
+      return;
+    }
+    for (Map.Entry<String, String> entry : tagsInTS.entrySet()) {
+      String tagk = entry.getKey();
+      String tagv = entry.getValue();
+      if (tags.containsKey(tagk)) {
+        if (tags.get(tagk).equals(tagv)) {
+          continue;
+        }
+        else {
+          tags.remove(tagk);
+          aggregated_tags.add(tagk);
+        }
+      }
+    }
+    for (String tagk : tags.keySet()) {
+      if (!tagsInTS.containsKey(tagk)) {
+        tags.remove(tagk);
+      }
+    }
+    Iterator<String> i = aggregated_tags.iterator();
+    while (i.hasNext()) {
+      String tagk = i.next();
+      if (!tagsInTS.containsKey(tagk)) {
+        i.remove();
       }
     }
   }
