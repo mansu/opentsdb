@@ -554,6 +554,10 @@ final class TsdbQuery implements Query {
     for (int i = 0; i < timeSeriesList.size(); i++) {
       LOG.info("ts " + i);
       List<Point> points = timeSeriesList.get(i).getPoints();
+//      Point last = points.get(points.size() - 1);
+//      points.add(new Point(last.getTs() + 10L, last.getVal() + 100));
+//      points.add(new Point(last.getTs() + 20L, last.getVal() + 200));
+//      points.add(new Point(last.getTs() + 30L, last.getVal() + 300));
       for (int j = 0; j < points.size(); j++)
         LOG.info(points.get(j).toString());
     }
@@ -623,7 +627,7 @@ final class TsdbQuery implements Query {
 
     @Override
     public double toDouble() {
-      return 0;
+      return this.value;
     }
   }
 

@@ -46,6 +46,14 @@ public class TagVNotLiteralOrFilter extends TagVFilter {
   public TagVNotLiteralOrFilter(final String tagk, final String filter) {
     this(tagk, filter, false);
   }
+
+  public Set<String> getLiterals() {
+    return literals;
+  }
+
+  public boolean get_case_insensitive() {
+    return case_insensitive;
+  }
   
   /**
    * A ctor that allows enabling case insensitivity

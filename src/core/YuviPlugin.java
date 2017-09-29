@@ -9,7 +9,9 @@ import com.pinterest.yuvi.tagstore.TagMatcher;
 
 import net.opentsdb.query.filter.TagVFilter;
 import net.opentsdb.query.filter.TagVLiteralOrFilter;
-import net.opentsdb.query.filter.TagVWildcardFilter;
+import net.opentsdb.query.filter.TagVNotLiteralOrFilter;
+import net.opentsdb.query.filter.TagVRegexFilter;
+import net.opentsdb.query.filter.TagVWildcardFilter;;
 import net.opentsdb.utils.Config;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -45,8 +47,15 @@ public class YuviPlugin {
   public List<TimeSeries> read(long startTime, long endTime, String metricName, List<TagVFilter> filters) {
     List<TagMatcher> tagMatchers = new ArrayList<TagMatcher>();
     for (TagVFilter tagVFilter : filters) {
+      System.out.println("tagVFilter.getType() = " + tagVFilter.getType());
       if (tagVFilter.getType().equals(TagVWildcardFilter.FILTER_NAME)) {
-        tagMatchers.add(TagMatcher.wildcardMatch(tagVFilter.getTagk(), "*"));
+        TagVWildcardFilter tagVWildcardFilter = (TagVWildcardFilter)tagVFilter;
+        if (tagVWildcardFilter.isCaseInsensitive()) {
+          tagMatchers.add(TagMatcher.wildcardMatch(tagVFilter.getTagk(), "*"));
+        }
+        else {
+          tagMatchers.add(TagMatcher.iwildcardMatch(tagVFilter.getTagk(), "*"));
+        }
       }
       if (tagVFilter.getType().equals(TagVLiteralOrFilter.FILTER_NAME)) {
         StringBuffer sb = new StringBuffer();
@@ -61,7 +70,25 @@ public class YuviPlugin {
         }
         tagMatchers.add(TagMatcher.literalOrMatch(tagVLiteralOrFilter.getTagk(),
             sb.toString(), tagVLiteralOrFilter.get_case_insensitive()));
-
+      }
+      if (tagVFilter.getType().equals(TagVNotLiteralOrFilter.FILTER_NAME)) {
+        StringBuffer sb = new StringBuffer();
+        TagVNotLiteralOrFilter tagVNotLiteralOrFilter = (TagVNotLiteralOrFilter)tagVFilter;
+        for (String str : tagVNotLiteralOrFilter.getLiterals()) {
+          if (sb.length() == 0) {
+            sb.append(str);
+          }
+          else {
+            sb.append("|" + str);
+          }
+        }
+        tagMatchers.add(TagMatcher.notLiteralOrMatch(tagVNotLiteralOrFilter.getTagk(),
+            sb.toString(), tagVNotLiteralOrFilter.get_case_insensitive()));
+      }
+      if (tagVFilter.getType().equals(TagVRegexFilter.FILTER_NAME)) {
+        TagVRegexFilter tagVRegexFilter = (TagVRegexFilter)tagVFilter;
+        tagMatchers.add(TagMatcher.regExMatch(tagVRegexFilter.getTagk(),
+            tagVRegexFilter.getFilter()));
       }
     }
     final Query YuviQuery = new Query(metricName, tagMatchers);
