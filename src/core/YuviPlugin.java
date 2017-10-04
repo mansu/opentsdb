@@ -6,6 +6,9 @@ import com.pinterest.yuvi.chunk.QueryAggregation;
 import com.pinterest.yuvi.chunk.ChunkManager;
 import com.pinterest.yuvi.tagstore.Query;
 import com.pinterest.yuvi.tagstore.TagMatcher;
+import com.pinterest.yuvi.writer.MetricWriter;
+import com.pinterest.yuvi.writer.kafka.KafkaMetricWriter;
+import com.pinterest.yuvi.writer.kafka.MetricsWriterTask;
 
 import net.opentsdb.query.filter.TagVFilter;
 import net.opentsdb.query.filter.TagVLiteralOrFilter;
@@ -20,6 +23,8 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class YuviPlugin {
 
@@ -38,9 +43,20 @@ public class YuviPlugin {
 
     // Load metrics data from a file
     LOG.info("Starting Yuvi plugin. Loading data");
-    Path filePath = Paths.get(config.getString("tsd.storage.yuvi.sample_data"));
-    FileMetricWriter metricReader = new FileMetricWriter(filePath, chunkManager);
-    metricReader.start();
+//    Path filePath = Paths.get(config.getString("tsd.storage.yuvi.sample_data"));
+//    FileMetricWriter metricReader = new FileMetricWriter(filePath, chunkManager);
+//    metricReader.start();
+
+    final MetricWriter kafkaMetricsReader = new KafkaMetricWriter(chunkManager,
+        config.getString("tsd.storage.yuvi.kafka_topic_name"),
+        config.getString("tsd.storage.yuvi.kafka_boostrap_servers"),
+        config.getString("tsd.storage.yuvi.kafka_client_groups"),
+        config.getString("tsd.storage.yuvi.kafka_auto_commit"),
+        config.getString("tsd.storage.yuvi.kafka_auto_commit.interval"),
+        config.getString("tsd.storage.yuvi.kakfa_session_timeout"));
+    final MetricsWriterTask metricsWriterTask = new MetricsWriterTask(kafkaMetricsReader);
+    final ExecutorService executor = Executors.newSingleThreadExecutor();
+    executor.execute(metricsWriterTask);
     LOG.info("Finished loading data. Yuvi is ready.");
   }
 
