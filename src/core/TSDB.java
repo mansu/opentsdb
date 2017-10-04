@@ -148,6 +148,13 @@ public final class TSDB {
   /** Datapoints Added */
   private static final AtomicLong datapoints_added = new AtomicLong();
 
+  /** Yuvi Plugin */
+  private YuviPlugin yuviPlugin;
+
+  public YuviPlugin getYuviPlugin() {
+    return yuviPlugin;
+  }
+
   /**
    * Constructor
    * @param client An initialized HBase client object
@@ -156,6 +163,7 @@ public final class TSDB {
    */
   public TSDB(final HBaseClient client, final Config config) {
     this.config = config;
+    yuviPlugin = new YuviPlugin(config);
     if (client == null) {
       final org.hbase.async.Config async_config;
       if (config.configLocation() != null && !config.configLocation().isEmpty()) {

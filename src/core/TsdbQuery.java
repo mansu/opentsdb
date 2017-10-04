@@ -157,7 +157,7 @@ final class TsdbQuery implements Query {
     this.tsdb = tsdb;
     enable_fuzzy_filter = tsdb.getConfig()
         .getBoolean("tsd.query.enable_fuzzy_filter");
-    YuviPlugin = new YuviPlugin(tsdb.getConfig());
+    YuviPlugin = tsdb.getYuviPlugin();
   }
 
   /**
