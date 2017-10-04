@@ -25,14 +25,14 @@ import org.powermock.modules.junit4.PowerMockRunner;
 @RunWith(PowerMockRunner.class)
 public class TestTsdbQueryAggregatorsSalted extends TestTsdbQueryAggregators {
   
-  @Before
-  public void beforeLocal() throws Exception {
-    PowerMockito.mockStatic(Const.class);
-    PowerMockito.when(Const.SALT_WIDTH()).thenReturn(1);
-    PowerMockito.when(Const.SALT_BUCKETS()).thenReturn(2);
-    PowerMockito.when(Const.MAX_NUM_TAGS()).thenReturn((short) 8);
-    
-    query = new TsdbQuery(tsdb);
-  }
+//  @Before
+//  public void beforeLocal() throws Exception {
+//    PowerMockito.mockStatic(Const.class);
+//    PowerMockito.when(Const.SALT_WIDTH()).thenReturn(1);
+//    PowerMockito.when(Const.SALT_BUCKETS()).thenReturn(2);
+//    PowerMockito.when(Const.MAX_NUM_TAGS()).thenReturn((short) 8);
+//
+//    query = new TsdbQuery(tsdb);
+//  }
   
 }

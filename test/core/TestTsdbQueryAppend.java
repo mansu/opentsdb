@@ -16,10 +16,10 @@ import org.junit.Before;
 import org.powermock.reflect.Whitebox;
 
 public class TestTsdbQueryAppend extends TestTsdbQueryQueries {
-  
-  @Before
-  public void beforeLocal() { 
-    Whitebox.setInternalState(config, "enable_appends", true);
-    query = new TsdbQuery(tsdb);
-  }
+//
+//  @Before
+//  public void beforeLocal() {
+//    Whitebox.setInternalState(config, "enable_appends", true);
+//    query = new TsdbQuery(tsdb);
+//  }
 }
