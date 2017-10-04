@@ -41,23 +41,27 @@ public class YuviPlugin {
         config.getString("tsd.storage.yuvi.chunk_data_prefix"),
         config.getInt("tsd.storage.yuvi.expected_tag_store_size"));
 
-    // Load metrics data from a file
-    LOG.info("Starting Yuvi plugin. Loading data");
-//    Path filePath = Paths.get(config.getString("tsd.storage.yuvi.sample_data"));
-//    FileMetricWriter metricReader = new FileMetricWriter(filePath, chunkManager);
-//    metricReader.start();
+    LOG.info("Starting Yuvi plugin.");
+    if (config.getString("tsd.storage.yuvi.consumer").equals("kafka")) {
+      final MetricWriter kafkaMetricsReader = new KafkaMetricWriter(chunkManager,
+          config.getString("tsd.storage.yuvi.kafka_topic_name"),
+          config.getString("tsd.storage.yuvi.kafka_topic_partition"),
+          config.getString("tsd.storage.yuvi.kafka_boostrap_servers"),
+          config.getString("tsd.storage.yuvi.kafka_client_groups"),
+          config.getString("tsd.storage.yuvi.kafka_auto_commit"),
+          config.getString("tsd.storage.yuvi.kafka_auto_commit.interval"),
+          config.getString("tsd.storage.yuvi.kakfa_session_timeout"));
+      final MetricsWriterTask metricsWriterTask = new MetricsWriterTask(kafkaMetricsReader);
+      final ExecutorService executor = Executors.newSingleThreadExecutor();
+      executor.execute(metricsWriterTask);
+    } else {
+      // Load metrics data from a file
+      Path filePath = Paths.get(config.getString("tsd.storage.yuvi.sample_data"));
+      FileMetricWriter metricReader = new FileMetricWriter(filePath, chunkManager);
+      metricReader.start();
+    }
 
-    final MetricWriter kafkaMetricsReader = new KafkaMetricWriter(chunkManager,
-        config.getString("tsd.storage.yuvi.kafka_topic_name"),
-        config.getString("tsd.storage.yuvi.kafka_boostrap_servers"),
-        config.getString("tsd.storage.yuvi.kafka_client_groups"),
-        config.getString("tsd.storage.yuvi.kafka_auto_commit"),
-        config.getString("tsd.storage.yuvi.kafka_auto_commit.interval"),
-        config.getString("tsd.storage.yuvi.kakfa_session_timeout"));
-    final MetricsWriterTask metricsWriterTask = new MetricsWriterTask(kafkaMetricsReader);
-    final ExecutorService executor = Executors.newSingleThreadExecutor();
-    executor.execute(metricsWriterTask);
-    LOG.info("Finished loading data. Yuvi is ready.");
+    LOG.info("Yuvi is ready.");
   }
 
   public List<TimeSeries> read(long startTime, long endTime, String metricName, List<TagVFilter> filters) {
