@@ -1,0 +1,70 @@
+# --------- NETWORK ----------
+# The TCP port TSD should use for communications
+# *** REQUIRED ***
+tsd.network.port = 4242
+
+# The IPv4 network address to bind to, defaults to all addresses
+# tsd.network.bind = 0.0.0.0
+
+# Disable Nagel's algorithm, default is True
+#tsd.network.tcp_no_delay = true
+
+# Determines whether or not to send keepalive packets to peers, default
+# is True
+#tsd.network.keep_alive = true
+
+# Determines if the same socket should be used for new connections, default
+# is True
+#tsd.network.reuse_address = true
+
+# Number of worker threads dedicated to Netty, defaults to # of CPUs * 2
+#tsd.network.worker_threads = 8
+
+# Whether or not to use NIO or tradditional blocking IO, defaults to True
+#tsd.network.async_io = true
+
+# ----------- HTTP -----------
+# The location of static files for the HTTP GUI interface.
+# *** REQUIRED ***
+tsd.http.staticroot = target/opentsdb-2.3.0/queryui
+
+# Where TSD should write it's cache files to
+# *** REQUIRED ***
+tsd.http.cachedir = httpcachedir
+
+# --------- CORE ----------
+# Whether or not to automatically create UIDs for new metric types, default
+# is False
+tsd.core.auto_create_metrics = true
+
+# Whether or not to enable the built-in UI Rpc Plugins, default
+# is True
+#tsd.core.enable_ui = true
+
+# Whether or not to enable the built-in API Rpc Plugins, default
+# is True
+#tsd.core.enable_api = true
+
+# --------- STORAGE ----------
+# A comma separated list of Zookeeper hosts to connect to, with or without
+# port specifiers, default is "localhost"
+tsd.storage.hbase.zk_quorum = devtest5-infra-zookeeper-dev-001:2181
+
+# --------- YUVI ---------------------------------
+# Chunk store config
+tsd.storage.yuvi.chunk_data_prefix = OpenTSDB
+tsd.storage.yuvi.expected_tag_store_size = 100000
+
+# Yuvi Kafka consumer config
+tsd.storage.yuvi.consumer = kafka
+tsd.storage.yuvi.kafka_topic_name = metron_stream
+tsd.storage.yuvi.kafka_topic_partition = 1
+tsd.storage.yuvi.kafka_bootstrap_servers = metricskafka06011.ec2.pin220.com:9092,metricskafka06012.ec2.pin220.com:9092,metricskafka06013.ec2.pin220.com:9092,metricskafka06014.ec2.pin220.com:9092,metricskafka06015.ec2.pin220.com:9092,metricskafka06016.ec2.pin220.com:9092,metricskafka06017.ec2.pin220.com:9092,metricskafka06018.ec2.pin220.com:9092,metricskafka06019.ec2.pin220.com:9092,metricskafka06020.ec2.pin220.com:9092,metricskafka06021.ec2.pin220.com:9092,metricskafka06022.ec2.pin220.com:9092,metricskafka06023.ec2.pin220.com:9092,metricskafka06024.ec2.pin220.com:9092,metricskafka06025.ec2.pin220.com:9092,metricskafka06026.ec2.pin220.com:9092
+tsd.storage.yuvi.kafka_client_groups = yuvi_consumer_partition1
+tsd.storage.yuvi.kafka_auto_commit = true
+tsd.storage.yuvi.kafka_autocommit_interval = 1000
+tsd.storage.yuvi.kafka_session_timeout = 30000
+
+# To read data from a file
+# tsd.storage.yuvi.consumer = kafka
+# tsd.storage.yuvi.sample_data = yuviSampleData

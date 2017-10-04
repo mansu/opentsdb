@@ -41,8 +41,9 @@ public class YuviPlugin {
         config.getString("tsd.storage.yuvi.chunk_data_prefix"),
         config.getInt("tsd.storage.yuvi.expected_tag_store_size"));
 
+    String yuviConsumer = config.getString("tsd.storage.yuvi.consumer");
     LOG.info("Starting Yuvi plugin.");
-    if (config.getString("tsd.storage.yuvi.consumer").equals("kafka")) {
+    if (yuviConsumer.equals("kafka")) {
       final MetricWriter kafkaMetricsReader = new KafkaMetricWriter(chunkManager,
           config.getString("tsd.storage.yuvi.kafka_topic_name"),
           config.getString("tsd.storage.yuvi.kafka_topic_partition"),
@@ -54,11 +55,12 @@ public class YuviPlugin {
       final MetricsWriterTask metricsWriterTask = new MetricsWriterTask(kafkaMetricsReader);
       final ExecutorService executor = Executors.newSingleThreadExecutor();
       executor.execute(metricsWriterTask);
-    } else {
-      // Load metrics data from a file
+    } else if (yuviConsumer.equals("file")){
       Path filePath = Paths.get(config.getString("tsd.storage.yuvi.sample_data"));
       FileMetricWriter metricReader = new FileMetricWriter(filePath, chunkManager);
       metricReader.start();
+    } else {
+      LOG.error("Unknown yuvi consumer");
     }
 
     LOG.info("Yuvi is ready.");
