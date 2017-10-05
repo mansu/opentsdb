@@ -45,3 +45,6 @@ tools/docker/libs
 tools/docker/*.jar
 tools/docker/logback.xml
 tools/docker/opentsdb.conf
+
+# Cache dir for local http server
+httpcachedir
