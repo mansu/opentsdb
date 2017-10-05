@@ -45,11 +45,6 @@ tsd.core.auto_create_metrics = true
 # is True
 #tsd.core.enable_api = true
 
-# --------- STORAGE ----------
-# A comma separated list of Zookeeper hosts to connect to, with or without
-# port specifiers, default is "localhost"
-tsd.storage.hbase.zk_quorum = devtest5-infra-zookeeper-dev-001:2181
-
 # --------- YUVI ---------------------------------
 tsd.storage.yuvi.consumer = file
 tsd.storage.yuvi.sample_data = yuviSampleData
