@@ -1,7 +1,7 @@
 Load Yuvi backed OpenTSDB in IntelliJ for development
 
 1. ./yuvi_compile.sh
-2. mvn exec:java -Dexec.mainClass="net.opentsdb.tools.TSDMain"
+2. mvn exec:java -Dexec.mainClass="net.opentsdb.tools.TSDMain" -Dexec.args="--config=yuvi.conf"
 3. Sample query: http://localhost:4242/api/query?start=365d-ago&m=sum:metric1
 
 Development:
