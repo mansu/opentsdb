@@ -47,11 +47,11 @@ public class YuviPlugin {
       final MetricWriter kafkaMetricsReader = new KafkaMetricWriter(chunkManager,
           config.getString("tsd.storage.yuvi.kafka_topic_name"),
           config.getString("tsd.storage.yuvi.kafka_topic_partition"),
-          config.getString("tsd.storage.yuvi.kafka_boostrap_servers"),
+          config.getString("tsd.storage.yuvi.kafka_bootstrap_servers"),
           config.getString("tsd.storage.yuvi.kafka_client_groups"),
           config.getString("tsd.storage.yuvi.kafka_auto_commit"),
           config.getString("tsd.storage.yuvi.kafka_auto_commit.interval"),
-          config.getString("tsd.storage.yuvi.kakfa_session_timeout"));
+          config.getString("tsd.storage.yuvi.kafka_session_timeout"));
       final MetricsWriterTask metricsWriterTask = new MetricsWriterTask(kafkaMetricsReader);
       final ExecutorService executor = Executors.newSingleThreadExecutor();
       executor.execute(metricsWriterTask);
