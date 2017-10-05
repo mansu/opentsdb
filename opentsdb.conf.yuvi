@@ -51,6 +51,7 @@ tsd.core.auto_create_metrics = true
 tsd.storage.hbase.zk_quorum = devtest5-infra-zookeeper-dev-001:2181
 
 # --------- YUVI ---------------------------------
+tsd.storage.yuvi.consumer = file
 tsd.storage.yuvi.sample_data = yuviSampleData
 tsd.storage.yuvi.chunk_data_prefix = OpenTSDB
-tsd.storage.yuvi.expected_tag_store_size = 10000
+tsd.storage.yuvi.expected_tag_store_size = 1000000
