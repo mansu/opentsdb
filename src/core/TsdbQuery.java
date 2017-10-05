@@ -545,27 +545,15 @@ final class TsdbQuery implements Query {
 
   @Override
   public Deferred<DataPoints[]> runAsync() throws HBaseException {
-    LOG.info("startTime = " + this.getStartTime() + ", endTime = " + this.getEndTime()
-        + ", metric = " + this.metricName);
     List<TimeSeries> timeSeriesList =
-        YuviPlugin.read(this.getStartTime() / 1000, this.getEndTime() / 1000,
-            this.metricName, //"tc.proc.stat.ps.cpu.coreapp-ngapi-prod",
+        YuviPlugin.read(this.getStartTime() / 1000,
+            this.getEndTime() / 1000,
+            this.metricName,
             this.filters);
-    for (int i = 0; i < timeSeriesList.size(); i++) {
-      LOG.info("ts " + i);
-      List<Point> points = timeSeriesList.get(i).getPoints();
-//      Point last = points.get(points.size() - 1);
-//      points.add(new Point(last.getTs() + 10L, last.getVal() + 100));
-//      points.add(new Point(last.getTs() + 20L, last.getVal() + 200));
-//      points.add(new Point(last.getTs() + 30L, last.getVal() + 300));
-      for (int j = 0; j < points.size(); j++)
-        LOG.info(points.get(j).toString());
-    }
 
     /**
      * TODO: Add GroupBy and Aggregators. For now keep the commented line as a good reference.
      */
-
     TreeMap<byte[], Span> spanMap = new TreeMap<byte[], Span>(
         new Comparator<byte[]>() {
           @Override
@@ -1210,8 +1198,8 @@ final class TsdbQuery implements Query {
 
   /**
    * Returns a scanner set for the given metric (from {@link #metric} or from
-   * the first TSUID in the {@link #tsuids}s list. If one or more tags are 
-   * provided, it calls into {@link #createAndSetFilter} to setup a row key 
+   * the first TSUID in the {@link #tsuids}s list. If one or more tags are
+   * provided, it calls into {@link #createAndSetFilter} to setup a row key
    * filter. If one or more TSUIDs have been provided, it calls into
    * {@link #createAndSetTSUIDFilter} to setup a row key filter.
    * @return A scanner to use for fetching data points
@@ -1222,8 +1210,8 @@ final class TsdbQuery implements Query {
 
   /**
    * Returns a scanner set for the given metric (from {@link #metric} or from
-   * the first TSUID in the {@link #tsuids}s list. If one or more tags are 
-   * provided, it calls into {@link #createAndSetFilter} to setup a row key 
+   * the first TSUID in the {@link #tsuids}s list. If one or more tags are
+   * provided, it calls into {@link #createAndSetFilter} to setup a row key
    * filter. If one or more TSUIDs have been provided, it calls into
    * {@link #createAndSetTSUIDFilter} to setup a row key filter.
    * @param salt_bucket The salt bucket to scan over when salting is enabled.
