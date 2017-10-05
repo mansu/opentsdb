@@ -65,9 +65,9 @@ final class TSDMain {
           Pair<Class<?>, Constructor<? extends StartupPlugin>>>();
 
   private static final short DEFAULT_FLUSH_INTERVAL = 1000;
-  
+
   private static TSDB tsdb = null;
-  
+
   public static void main(String[] args) throws IOException {
     Logger log = LoggerFactory.getLogger(TSDMain.class);
     log.info("Starting.");
@@ -112,7 +112,7 @@ final class TSDMain {
 
     // get a config object
     Config config = CliOptions.getConfig(argp);
-    
+
     // check for the required parameters
     try {
       if (config.getString("tsd.http.staticroot").isEmpty())
@@ -136,7 +136,7 @@ final class TSDMain {
 
     // validate the cache and staticroot directories
     try {
-      FileSystem.checkDirectory(config.getString("tsd.http.staticroot"), 
+      FileSystem.checkDirectory(config.getString("tsd.http.staticroot"),
           !Const.MUST_BE_WRITEABLE, Const.DONT_CREATE);
       FileSystem.checkDirectory(config.getString("tsd.http.cachedir"),
           Const.MUST_BE_WRITEABLE, Const.CREATE_IF_NEEDED);
@@ -161,14 +161,14 @@ final class TSDMain {
         }
       }
       final Executor executor = Executors.newCachedThreadPool();
-      final NioServerBossPool boss_pool = 
+      final NioServerBossPool boss_pool =
           new NioServerBossPool(executor, 1, new Threads.BossThreadNamer());
-      final NioWorkerPool worker_pool = new NioWorkerPool(executor, 
+      final NioWorkerPool worker_pool = new NioWorkerPool(executor,
           workers, new Threads.WorkerThreadNamer());
       factory = new NioServerSocketChannelFactory(boss_pool, worker_pool);
     } else {
       factory = new OioServerSocketChannelFactory(
-          Executors.newCachedThreadPool(), Executors.newCachedThreadPool(), 
+          Executors.newCachedThreadPool(), Executors.newCachedThreadPool(),
           new Threads.PrependThreadNamer());
     }
 
@@ -190,26 +190,26 @@ final class TSDMain {
       if (config.getBoolean("tsd.storage.hbase.prefetch_meta")) {
         tsdb.preFetchHBaseMeta();
       }
-      
+
       // Make sure we don't even start if we can't find our tables.
-      tsdb.checkNecessaryTablesExist().joinUninterruptibly();
-      
-      registerShutdownHook();
+      //tsdb.checkNecessaryTablesExist().joinUninterruptibly();
+
+      //registerShutdownHook();
       final ServerBootstrap server = new ServerBootstrap(factory);
-      
+
       // This manager is capable of lazy init, but we force an init
       // here to fail fast.
       final RpcManager manager = RpcManager.instance(tsdb);
 
       server.setPipelineFactory(new PipelineFactory(tsdb, manager, connections_limit));
       if (config.hasProperty("tsd.network.backlog")) {
-        server.setOption("backlog", config.getInt("tsd.network.backlog")); 
+        server.setOption("backlog", config.getInt("tsd.network.backlog"));
       }
-      server.setOption("child.tcpNoDelay", 
+      server.setOption("child.tcpNoDelay",
           config.getBoolean("tsd.network.tcp_no_delay"));
-      server.setOption("child.keepAlive", 
+      server.setOption("child.keepAlive",
           config.getBoolean("tsd.network.keep_alive"));
-      server.setOption("reuseAddress", 
+      server.setOption("reuseAddress",
           config.getBoolean("tsd.network.reuse_address"));
 
       // null is interpreted as the wildcard address.
@@ -278,27 +278,27 @@ final class TSDMain {
     return startup;
   }
 
-  private static void registerShutdownHook() {
-    final class TSDBShutdown extends Thread {
-      public TSDBShutdown() {
-        super("TSDBShutdown");
-      }
-      public void run() {
-        try {
-          if (RpcManager.isInitialized()) {
-            // Check that its actually been initialized.  We don't want to
-            // create a new instance only to shutdown!
-            RpcManager.instance(tsdb).shutdown().join();
-          }
-          if (tsdb != null) {
-            tsdb.shutdown().join();
-          }
-        } catch (Exception e) {
-          LoggerFactory.getLogger(TSDBShutdown.class)
-            .error("Uncaught exception during shutdown", e);
-        }
-      }
-    }
-    Runtime.getRuntime().addShutdownHook(new TSDBShutdown());
-  }
+ // private static void registerShutdownHook() {
+ //    final class TSDBShutdown extends Thread {
+ //      public TSDBShutdown() {
+ //        super("TSDBShutdown");
+ //      }
+ //      public void run() {
+ //        try {
+ //          if (RpcManager.isInitialized()) {
+ //            // Check that its actually been initialized.  We don't want to
+ //            // create a new instance only to shutdown!
+ //            RpcManager.instance(tsdb).shutdown().join();
+ //          }
+ //          if (tsdb != null) {
+ //            tsdb.shutdown().join();
+ //          }
+ //        } catch (Exception e) {
+ //          LoggerFactory.getLogger(TSDBShutdown.class)
+ //            .error("Uncaught exception during shutdown", e);
+ //        }
+ //      }
+ //    }
+ //    Runtime.getRuntime().addShutdownHook(new TSDBShutdown());
+ //  }
 }
