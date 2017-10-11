@@ -4,6 +4,7 @@ import com.pinterest.yuvi.writer.FileMetricWriter;
 import com.pinterest.yuvi.models.TimeSeries;
 import com.pinterest.yuvi.chunk.QueryAggregation;
 import com.pinterest.yuvi.chunk.ChunkManager;
+import com.pinterest.yuvi.chunk.OffHeapChunkManagerTask;
 import com.pinterest.yuvi.tagstore.Query;
 import com.pinterest.yuvi.tagstore.TagMatcher;
 import com.pinterest.yuvi.writer.MetricWriter;
@@ -25,6 +26,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 public class YuviPlugin {
 
@@ -52,6 +55,17 @@ public class YuviPlugin {
           config.getString("tsd.storage.yuvi.kafka_auto_commit"),
           config.getString("tsd.storage.yuvi.kafka_auto_commit.interval"),
           config.getString("tsd.storage.yuvi.kafka_session_timeout"));
+
+      final int offHeapTaskRateMinutes =
+            config.getInt("tsd.storage.yuvi.offHeapTaskRateMinutes");
+      final ScheduledExecutorService offHeapChunkManagerScheduler =
+              Executors.newScheduledThreadPool(1);
+      final OffHeapChunkManagerTask offHeapChunkManagerTask =
+            new OffHeapChunkManagerTask(chunkManager);
+      offHeapChunkManagerScheduler.scheduleAtFixedRate(offHeapChunkManagerTask,
+              offHeapTaskRateMinutes,
+              offHeapTaskRateMinutes, TimeUnit.MINUTES);
+
       final MetricsWriterTask metricsWriterTask = new MetricsWriterTask(kafkaMetricsReader);
       final ExecutorService executor = Executors.newSingleThreadExecutor();
       executor.execute(metricsWriterTask);
