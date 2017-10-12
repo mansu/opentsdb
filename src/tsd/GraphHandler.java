@@ -930,27 +930,10 @@ final class GraphHandler implements HttpRpc {
    * @return The path to the wrapper script.
    */
   private static String findGnuplotHelperScript() {
-    final URL url = GraphHandler.class.getClassLoader().getResource(WRAPPER);
-    if (url == null) {
-      throw new RuntimeException("Couldn't find " + WRAPPER + " on the"
-        + " CLASSPATH: " + System.getProperty("java.class.path"));
-    }
-    final String path = url.getFile();
-    LOG.debug("Using Gnuplot wrapper at {}", path);
-    final File file = new File(path);
-    final String error;
-    if (!file.exists()) {
-      error = "non-existent";
-    } else if (!file.canExecute()) {
-      error = "non-executable";
-    } else if (!file.canRead()) {
-      error = "unreadable";
-    } else {
-      return path;
-    }
-    throw new RuntimeException("The " + WRAPPER + " found on the"
-      + " CLASSPATH (" + path + ") is a " + error + " file...  WTF?"
-      + "  CLASSPATH=" + System.getProperty("java.class.path"));
+    // TODO (Jinghan) hack to get the web server run
+    // remove after we agree how to deal with the mygnuplot script loading.
+    // like in jar loading as stream or outside jar loading as normal file
+    return "target/mygnuplot.sh";
   }
 
 

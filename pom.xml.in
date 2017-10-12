@@ -195,10 +195,10 @@
             <phase>process-resources</phase>
             <configuration>
               <target>
-                <copy file="${basedir}/src/mygnuplot.sh" todir="${basedir}/target/classes"/>
-                <chmod file="${basedir}/target/classes/mygnuplot.sh" perm="ugo+rx"/>
-                <copy file="${basedir}/src/mygnuplot.bat" todir="${basedir}/target/classes"/>
-                <chmod file="${basedir}/target/classes/mygnuplot.bat" perm="ugo+rx"/>
+                <copy file="${basedir}/src/mygnuplot.sh" todir="${basedir}/target"/>
+                <chmod file="${basedir}/target/mygnuplot.sh" perm="ugo+rx"/>
+                <copy file="${basedir}/src/mygnuplot.bat" todir="${basedir}/target"/>
+                <chmod file="${basedir}/target/mygnuplot.bat" perm="ugo+rx"/>
               </target>
             </configuration>
             <goals>
@@ -335,6 +335,38 @@
           </execution>
         </executions>
       </plugin>
+
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-shade-plugin</artifactId>
+        <version>3.1.0</version>
+        <executions>
+          <execution>
+            <phase>package</phase>
+            <goals>
+              <goal>shade</goal>
+            </goals>
+            <configuration>
+              <outputFile>target/${project.build.finalName}-fat.jar</outputFile>
+              <artifactSet>
+                <includes>
+                  <include>*:*</include>
+                </includes>
+                <excludes>
+                  <exclude>/*.proto</exclude>
+                </excludes>
+              </artifactSet>
+              <transformers>
+                <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+                  <mainClass>net.opentsdb.tools.TSDMain</mainClass>
+                </transformer>
+                <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
+              </transformers>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+
       
     </plugins>
   </build>
@@ -470,6 +502,12 @@
       <artifactId>powermock-module-junit4</artifactId>
       <version>@POWERMOCK_MOCKITO_VERSION@</version>
       <scope>test</scope>
+    </dependency>
+
+    <dependency>
+      <groupId>com.pinterest.yuvi</groupId>
+      <artifactId>yuvi</artifactId>
+      <version>0.1-SNAPSHOT</version>
     </dependency>
 
     <!-- misc. build-time dependencies -->
