@@ -124,6 +124,7 @@ public class BaseTsdbTest {
     
     config = new Config(false);
     config.overrideConfig("tsd.storage.enable_compaction", "false");
+    config.overrideConfig("tsd.storage.yuvi.mock_for_test", "true");
     tsdb = PowerMockito.spy(new TSDB(config));
 
     config.setAutoMetric(true);

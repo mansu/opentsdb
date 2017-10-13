@@ -40,6 +40,11 @@ public class YuviPlugin {
   }
 
   public YuviPlugin(Config config) {
+    if (config.hasProperty("tsd.storage.yuvi.mock_for_test") &&
+        config.getBoolean("tsd.storage.yuvi.mock_for_test")) {
+      LOG.info("Mocked Yuvi is ready.");
+      return;
+    }
     chunkManager = new ChunkManager(
         config.getString("tsd.storage.yuvi.chunk_data_prefix"),
         config.getInt("tsd.storage.yuvi.expected_tag_store_size"));
