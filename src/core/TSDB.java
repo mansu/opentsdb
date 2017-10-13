@@ -12,6 +12,8 @@
 // see <http://www.gnu.org/licenses/>.
 package net.opentsdb.core;
 
+import com.pinterest.yuvi.chunk.ChunkManager;
+
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.nio.charset.Charset;
@@ -162,8 +164,15 @@ public final class TSDB {
    * @since 2.1
    */
   public TSDB(final HBaseClient client, final Config config) {
+    this(client, config, null);
+  }
+
+  public TSDB(final HBaseClient client, final Config config, final ChunkManager chunkManager) {
     this.config = config;
-    yuviPlugin = new YuviPlugin(config);
+    if (chunkManager == null)
+      yuviPlugin = new YuviPlugin(config);
+    else
+      yuviPlugin = new YuviPlugin(chunkManager);
     // if (client == null) {
     //   final org.hbase.async.Config async_config;
     //   if (config.configLocation() != null && !config.configLocation().isEmpty()) {
