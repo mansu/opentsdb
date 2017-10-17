@@ -42,6 +42,8 @@ public class YuviPlugin {
 
   private long timeoutSeconds;
 
+  private final ExecutorService executor = Executors.newSingleThreadExecutor();
+
   public YuviPlugin(ChunkManager chunkManager) {
     this.chunkManager = chunkManager;
   }
@@ -93,7 +95,8 @@ public class YuviPlugin {
     LOG.info("Yuvi is ready.");
   }
 
-  public List<TimeSeries> read(final long startTime, final long endTime, String metricName, List<TagVFilter> filters) {
+  public List<TimeSeries> read(final long startTime, final long endTime,
+                               final String metricName, final List<TagVFilter> filters) {
     List<TagMatcher> tagMatchers = new ArrayList<TagMatcher>();
     for (TagVFilter tagVFilter : filters) {
       System.out.println("tagVFilter.getType() = " + tagVFilter.getType());
@@ -140,19 +143,17 @@ public class YuviPlugin {
             tagVRegexFilter.getFilter()));
       }
     }
-    final Query YuviQuery = new Query(metricName, tagMatchers);
-    LOG.info(startTime + " " + endTime + " " + metricName);
+    final Query yuviquery = new Query(metricName, tagMatchers);
+    LOG.debug(startTime + " " + endTime + " " + metricName);
     for (TagVFilter tagVFilter : filters) {
-      LOG.info(tagVFilter.toString());
+      LOG.debug(tagVFilter.toString());
     }
-    LOG.info("Request sent to Yuvi");
 
     List<TimeSeries> result = new ArrayList<TimeSeries>();
-    final ExecutorService executor = Executors.newSingleThreadExecutor();
     final Future<List<TimeSeries>> future = executor.submit(new Callable() {
       @Override
       public List<TimeSeries> call() throws Exception {
-        return chunkManager.query(YuviQuery,
+        return chunkManager.query(yuviquery,
             startTime,
             endTime,
             QueryAggregation.NONE);
@@ -163,19 +164,13 @@ public class YuviPlugin {
     try {
       result = future.get(timeoutSeconds, TimeUnit.SECONDS);
     }
-    catch (InterruptedException ie) {
-      LOG.error(ie.toString());
-    }
-    catch (ExecutionException ee) {
-      LOG.error(ee.toString());
-    }
-    catch (TimeoutException te) {
-      LOG.error(te.toString());
+    catch (Exception e) {
+      LOG.error(e.toString());
     }
     if (!executor.isTerminated())
       executor.shutdownNow();
-    
-    LOG.info("Response received from Yuvi");
+
+    LOG.debug("Response received from Yuvi");
 
     return result;
   }
