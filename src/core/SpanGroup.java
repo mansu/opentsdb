@@ -28,6 +28,8 @@ import com.stumbleupon.async.Callback;
 import com.stumbleupon.async.Deferred;
 
 import net.opentsdb.meta.Annotation;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Groups multiple spans together and offers a dynamic "view" on them.
@@ -54,6 +56,8 @@ import net.opentsdb.meta.Annotation;
 final class SpanGroup implements DataPoints {
   /** Annotations */
   private final ArrayList<Annotation> annotations;
+
+  private static final Logger LOG = LoggerFactory.getLogger(SpanGroup.class);
 
   /** Start time (UNIX timestamp in seconds or ms) on 32 bits ("unsigned" int). */
   private final long start_time;
@@ -297,6 +301,11 @@ final class SpanGroup implements DataPoints {
         annotations.addAll(span.getAnnotations());
       }
     }
+
+    //For debugging
+    //TODO: remove this
+    LOG.debug("This SpanGroup instance is" + this.toString());
+    LOG.debug(span.getFullMetricName());
 
     updateTagsAndAggregatedTagsforYuvi(span.getTagsInTS());
   }
