@@ -75,6 +75,7 @@ public final class TestTree {
   public void before() throws Exception {
     final Config config = new Config(false);
     config.overrideConfig("tsd.storage.enable_compaction", "false");
+    config.overrideConfig("tsd.storage.yuvi.mock_for_test", "true");
     tsdb = new TSDB(client, config);
   }
   

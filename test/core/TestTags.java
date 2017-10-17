@@ -792,6 +792,7 @@ public final class TestTags {
   private void setupStorage() throws Exception {
     config = new Config(false);
     client = mock(HBaseClient.class);
+    config.overrideConfig("tsd.storage.yuvi.mock_for_test", "true");
     tsdb = new TSDB(config);
     storage = new MockBase(tsdb, client, true, true, true, true);
 

@@ -567,6 +567,7 @@ public final class TestBranch {
   private void setupStorage() throws Exception {
     final HBaseClient client = mock(HBaseClient.class);
     final Config config = new Config(false);
+    config.overrideConfig("tsd.storage.yuvi.mock_for_test", "true");
     storage = new MockBase(new TSDB(client, config), 
         client, true, true, true, true);
     final List<byte[]> families = new ArrayList<byte[]>();

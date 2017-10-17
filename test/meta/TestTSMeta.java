@@ -79,6 +79,8 @@ public final class TestTSMeta {
     when(config.enable_tsuid_incrementing()).thenReturn(true);
     when(config.enable_realtime_ts()).thenReturn(true);
 
+    when(config.hasProperty("tsd.storage.yuvi.mock_for_test")).thenReturn(true);
+    when(config.getBoolean("tsd.storage.yuvi.mock_for_test")).thenReturn(true);
     tsdb = new TSDB(client, config);
     storage = new MockBase(tsdb, client, true, true, true, true);
     final List<byte[]> families = new ArrayList<byte[]>();

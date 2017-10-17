@@ -72,6 +72,7 @@ public class TestUID {
 
     PowerMockito.whenNew(HBaseClient.class).withAnyArguments().thenReturn(client);
     config = new Config(false);
+    config.overrideConfig("tsd.storage.yuvi.mock_for_test", "true");
     tsdb = new TSDB(client, config);
     PowerMockito.spy(System.class);
     PowerMockito.when(System.nanoTime())

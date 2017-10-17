@@ -95,6 +95,7 @@ public class TestTextImporter {
   @Before
   public void before() throws Exception {
     config = new Config(false);
+    config.overrideConfig("tsd.storage.yuvi.mock_for_test", "true");
     tsdb = new TSDB(client, config);
 
     storage = new MockBase(tsdb, client, true, true, true, true);

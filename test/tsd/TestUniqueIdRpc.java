@@ -1093,6 +1093,7 @@ public final class TestUniqueIdRpc {
    */
   private void setupUID() throws Exception {
     final Config config = new Config(false);
+    config.overrideConfig("tsd.storage.yuvi.mock_for_test", "true");
     tsdb = new TSDB(client, config);
     
     storage = new MockBase(tsdb, client, true, true, true, true);
@@ -1122,6 +1123,7 @@ public final class TestUniqueIdRpc {
    */
   private void setupTSUID() throws Exception {
     final Config config = new Config(false);
+    config.overrideConfig("tsd.storage.yuvi.mock_for_test", "true");
     tsdb = new TSDB(client, config);
     
     Field met = tsdb.getClass().getDeclaredField("metrics");
