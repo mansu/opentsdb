@@ -156,7 +156,6 @@ public class YuviPlugin {
             QueryAggregation.NONE);
       }
     });
-    executor.shutdown(); // This does not cancel the already-scheduled task.
 
     try {
       result = future.get(timeoutSeconds, TimeUnit.SECONDS);
@@ -164,8 +163,6 @@ public class YuviPlugin {
     catch (Exception e) {
       LOG.error(e.toString());
     }
-    if (!executor.isTerminated())
-      executor.shutdownNow();
 
     LOG.debug("Response received from Yuvi");
 
