@@ -144,10 +144,7 @@ public class YuviPlugin {
       }
     }
     final Query yuviquery = new Query(metricName, tagMatchers);
-    LOG.debug(startTime + " " + endTime + " " + metricName);
-    for (TagVFilter tagVFilter : filters) {
-      LOG.debug(tagVFilter.toString());
-    }
+    LOG.debug("startTime: {}, endTime: {}, metricName {}", startTime, endTime, metricName);
 
     List<TimeSeries> result = new ArrayList<TimeSeries>();
     final Future<List<TimeSeries>> future = executor.submit(new Callable() {
