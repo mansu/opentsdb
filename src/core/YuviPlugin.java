@@ -42,7 +42,7 @@ public class YuviPlugin {
 
   private long timeoutSeconds;
 
-  private final ExecutorService executor = Executors.newSingleThreadExecutor();
+  private final ExecutorService executor = Executors.newCachedThreadPool();
 
   public YuviPlugin(ChunkManager chunkManager) {
     this.chunkManager = chunkManager;
