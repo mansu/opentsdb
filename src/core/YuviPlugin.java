@@ -22,12 +22,17 @@ import org.slf4j.LoggerFactory;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 public class YuviPlugin {
 
@@ -35,11 +40,14 @@ public class YuviPlugin {
 
   private ChunkManager chunkManager;
 
+  private long timeoutSeconds;
+
   public YuviPlugin(ChunkManager chunkManager) {
     this.chunkManager = chunkManager;
   }
 
   public YuviPlugin(Config config) {
+    timeoutSeconds = config.getLong("tsd.storage.yuvi.timeout_seconds");
     if (config.hasProperty("tsd.storage.yuvi.mock_for_test") &&
         config.getBoolean("tsd.storage.yuvi.mock_for_test")) {
       LOG.info("Mocked Yuvi is ready.");
@@ -85,7 +93,7 @@ public class YuviPlugin {
     LOG.info("Yuvi is ready.");
   }
 
-  public List<TimeSeries> read(long startTime, long endTime, String metricName, List<TagVFilter> filters) {
+  public List<TimeSeries> read(final long startTime, final long endTime, String metricName, List<TagVFilter> filters) {
     List<TagMatcher> tagMatchers = new ArrayList<TagMatcher>();
     for (TagVFilter tagVFilter : filters) {
       System.out.println("tagVFilter.getType() = " + tagVFilter.getType());
@@ -133,9 +141,42 @@ public class YuviPlugin {
       }
     }
     final Query YuviQuery = new Query(metricName, tagMatchers);
-    return chunkManager.query(YuviQuery,
-        startTime,
-        endTime,
-        QueryAggregation.NONE);
+    LOG.info(startTime + " " + endTime + " " + metricName);
+    for (TagVFilter tagVFilter : filters) {
+      LOG.info(tagVFilter.toString());
+    }
+    LOG.info("Request sent to Yuvi");
+
+    List<TimeSeries> result = new ArrayList<TimeSeries>();
+    final ExecutorService executor = Executors.newSingleThreadExecutor();
+    final Future<List<TimeSeries>> future = executor.submit(new Callable() {
+      @Override
+      public List<TimeSeries> call() throws Exception {
+        return chunkManager.query(YuviQuery,
+            startTime,
+            endTime,
+            QueryAggregation.NONE);
+      }
+    });
+    executor.shutdown(); // This does not cancel the already-scheduled task.
+
+    try {
+      result = future.get(timeoutSeconds, TimeUnit.SECONDS);
+    }
+    catch (InterruptedException ie) {
+      LOG.error(ie.toString());
+    }
+    catch (ExecutionException ee) {
+      LOG.error(ee.toString());
+    }
+    catch (TimeoutException te) {
+      LOG.error(te.toString());
+    }
+    if (!executor.isTerminated())
+      executor.shutdownNow();
+    
+    LOG.info("Response received from Yuvi");
+
+    return result;
   }
 }
