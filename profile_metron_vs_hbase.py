@@ -5,194 +5,43 @@ from datadiff import diff
 import json
 import requests
 import sys
+from statsboard import defs
 
-url_metron_list = [
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=divide(sum:ostrich.counters.serviceframework.followerservice.requestcount{method_name=adminCountUsersAndBoardsFollowedSinceSeconds},%2060)',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=divide(sum:ostrich.counters.serviceframework.followerservice.success{method_name=adminCountUsersAndBoardsFollowedSinceSeconds},%2060)',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=divide(sum:ostrich.counters.serviceframework.followerservice.failure{method_name=adminCountUsersAndBoardsFollowedSinceSeconds},%2060)',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=max:ostrich.metrics.serviceframework.followerservice.responsetime.p50{method_name=blockUser}&target=max:ostrich.metrics.serviceframework.followerservice.responsetime.p90{method_name=blockUser}&target=max:ostrich.metrics.serviceframework.followerservice.responsetime.p99{method_name=blockUser}',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=divide(sum:ostrich.counters.serviceframework.followerservice.requestcount{method_name=blockUser},%2060)',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=divide(sum:ostrich.counters.serviceframework.followerservice.success{method_name=blockUser},%2060)',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=divide(sum:ostrich.counters.serviceframework.followerservice.failure{method_name=blockUser},%2060)',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=max:ostrich.metrics.serviceframework.followerservice.responsetime.p50{method_name=checkUserFollowsInterest}&target=max:ostrich.metrics.serviceframework.followerservice.responsetime.p90{method_name=checkUserFollowsInterest}&target=max:ostrich.metrics.serviceframework.followerservice.responsetime.p99{method_name=checkUserFollowsInterest}',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=divide(sum:ostrich.counters.serviceframework.followerservice.requestcount{method_name=checkUserFollowsInterest},%2060)',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=divide(sum:ostrich.counters.serviceframework.followerservice.success{method_name=checkUserFollowsInterest},%2060)',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=divide(sum:ostrich.counters.serviceframework.followerservice.failure{method_name=checkUserFollowsInterest},%2060)',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=max:ostrich.metrics.serviceframework.followerservice.responsetime.p50{method_name=countBoardsFollowedExplicitly}&target=max:ostrich.metrics.serviceframework.followerservice.responsetime.p90{method_name=countBoardsFollowedExplicitly}&target=max:ostrich.metrics.serviceframework.followerservice.responsetime.p99{method_name=countBoardsFollowedExplicitly}',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=divide(sum:ostrich.counters.serviceframework.followerservice.requestcount{method_name=countBoardsFollowedExplicitly},%2060)',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=divide(sum:ostrich.counters.serviceframework.followerservice.success{method_name=countBoardsFollowedExplicitly},%2060)',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=divide(sum:ostrich.counters.serviceframework.followerservice.failure{method_name=countBoardsFollowedExplicitly},%2060)',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=max:ostrich.metrics.serviceframework.followerservice.responsetime.p50{method_name=countManyBoardFollowers}&target=max:ostrich.metrics.serviceframework.followerservice.responsetime.p90{method_name=countManyBoardFollowers}&target=max:ostrich.metrics.serviceframework.followerservice.responsetime.p99{method_name=countManyBoardFollowers}',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=divide(sum:ostrich.counters.serviceframework.followerservice.requestcount{method_name=countManyBoardFollowers},%2060)',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=divide(sum:ostrich.counters.serviceframework.followerservice.success{method_name=countManyBoardFollowers},%2060)',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=divide(sum:ostrich.counters.serviceframework.followerservice.failure{method_name=countManyBoardFollowers},%2060)',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=max:ostrich.metrics.serviceframework.followerservice.responsetime.p50{method_name=countManyUserFollowers}&target=max:ostrich.metrics.serviceframework.followerservice.responsetime.p90{method_name=countManyUserFollowers}&target=max:ostrich.metrics.serviceframework.followerservice.responsetime.p99{method_name=countManyUserFollowers}',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=divide(sum:ostrich.counters.serviceframework.followerservice.requestcount{method_name=countManyUserFollowers},%2060)',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=divide(sum:ostrich.counters.serviceframework.followerservice.success{method_name=countManyUserFollowers},%2060)',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=divide(sum:ostrich.counters.serviceframework.followerservice.failure{method_name=countManyUserFollowers},%2060)',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=max:ostrich.metrics.serviceframework.followerservice.responsetime.p50{method_name=countManyUsersFollowed}&target=max:ostrich.metrics.serviceframework.followerservice.responsetime.p90{method_name=countManyUsersFollowed}&target=max:ostrich.metrics.serviceframework.followerservice.responsetime.p99{method_name=countManyUsersFollowed}',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=divide(sum:ostrich.counters.serviceframework.followerservice.requestcount{method_name=countManyUsersFollowed},%2060)',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=divide(sum:ostrich.counters.serviceframework.followerservice.success{method_name=countManyUsersFollowed},%2060)',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=divide(sum:ostrich.counters.serviceframework.followerservice.failure{method_name=countManyUsersFollowed},%2060)',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=max:ostrich.metrics.serviceframework.followerservice.responsetime.p50{method_name=countUsersFollowedExplicitly}&target=max:ostrich.metrics.serviceframework.followerservice.responsetime.p90{method_name=countUsersFollowedExplicitly}&target=max:ostrich.metrics.serviceframework.followerservice.responsetime.p99{method_name=countUsersFollowedExplicitly}',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=divide(sum:ostrich.counters.serviceframework.followerservice.requestcount{method_name=countUsersFollowedExplicitly},%2060)',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=divide(sum:ostrich.counters.serviceframework.followerservice.success{method_name=countUsersFollowedExplicitly},%2060)',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=divide(sum:ostrich.counters.serviceframework.followerservice.failure{method_name=countUsersFollowedExplicitly},%2060)',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=max:ostrich.metrics.serviceframework.followerservice.responsetime.p50{method_name=deactivateUser}&target=max:ostrich.metrics.serviceframework.followerservice.responsetime.p90{method_name=deactivateUser}&target=max:ostrich.metrics.serviceframework.followerservice.responsetime.p99{method_name=deactivateUser}',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=divide(sum:ostrich.counters.serviceframework.followerservice.requestcount{method_name=deactivateUser},%2060)',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=divide(sum:ostrich.counters.serviceframework.followerservice.success{method_name=deactivateUser},%2060)',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=divide(sum:ostrich.counters.serviceframework.followerservice.failure{method_name=deactivateUser},%2060)',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=max:ostrich.metrics.serviceframework.followerservice.responsetime.p50{method_name=deleteBoardV2}&target=max:ostrich.metrics.serviceframework.followerservice.responsetime.p90{method_name=deleteBoardV2}&target=max:ostrich.metrics.serviceframework.followerservice.responsetime.p99{method_name=deleteBoardV2}',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=divide(sum:ostrich.counters.serviceframework.followerservice.requestcount{method_name=deleteBoardV2},%2060)',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=divide(sum:ostrich.counters.serviceframework.followerservice.success{method_name=deleteBoardV2},%2060)',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=divide(sum:ostrich.counters.serviceframework.followerservice.failure{method_name=deleteBoardV2},%2060)',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=max:ostrich.metrics.serviceframework.followerservice.responsetime.p50{method_name=filterBoardsFollowed2}&target=max:ostrich.metrics.serviceframework.followerservice.responsetime.p90{method_name=filterBoardsFollowed2}&target=max:ostrich.metrics.serviceframework.followerservice.responsetime.p99{method_name=filterBoardsFollowed2}',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=divide(sum:ostrich.counters.serviceframework.followerservice.requestcount{method_name=filterBoardsFollowed2},%2060)',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=divide(sum:ostrich.counters.serviceframework.followerservice.success{method_name=filterBoardsFollowed2},%2060)',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=divide(sum:ostrich.counters.serviceframework.followerservice.failure{method_name=filterBoardsFollowed2},%2060)',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=max:ostrich.metrics.serviceframework.followerservice.responsetime.p50{method_name=filterUsersBlocked}&target=max:ostrich.metrics.serviceframework.followerservice.responsetime.p90{method_name=filterUsersBlocked}&target=max:ostrich.metrics.serviceframework.followerservice.responsetime.p99{method_name=filterUsersBlocked}',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=divide(sum:ostrich.counters.serviceframework.followerservice.requestcount{method_name=filterUsersBlocked},%2060)',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=divide(sum:ostrich.counters.serviceframework.followerservice.success{method_name=filterUsersBlocked},%2060)',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=divide(sum:ostrich.counters.serviceframework.followerservice.failure{method_name=filterUsersBlocked},%2060)',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=max:ostrich.metrics.serviceframework.followerservice.responsetime.p50{method_name=filterUsersBlockedBy}&target=max:ostrich.metrics.serviceframework.followerservice.responsetime.p90{method_name=filterUsersBlockedBy}&target=max:ostrich.metrics.serviceframework.followerservice.responsetime.p99{method_name=filterUsersBlockedBy}',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=divide(sum:ostrich.counters.serviceframework.followerservice.requestcount{method_name=filterUsersBlockedBy},%2060)',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=divide(sum:ostrich.counters.serviceframework.followerservice.success{method_name=filterUsersBlockedBy},%2060)',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=divide(sum:ostrich.counters.serviceframework.followerservice.failure{method_name=filterUsersBlockedBy},%2060)',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=max:ostrich.metrics.serviceframework.followerservice.responsetime.p50{method_name=filterUsersFollowedBy}&target=max:ostrich.metrics.serviceframework.followerservice.responsetime.p90{method_name=filterUsersFollowedBy}&target=max:ostrich.metrics.serviceframework.followerservice.responsetime.p99{method_name=filterUsersFollowedBy}',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=divide(sum:ostrich.counters.serviceframework.followerservice.requestcount{method_name=filterUsersFollowedBy},%2060)',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=divide(sum:ostrich.counters.serviceframework.followerservice.success{method_name=filterUsersFollowedBy},%2060)',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=divide(sum:ostrich.counters.serviceframework.followerservice.failure{method_name=filterUsersFollowedBy},%2060)',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=max:ostrich.metrics.serviceframework.followerservice.responsetime.p50{method_name=filterUsersFollowedByWithType}&target=max:ostrich.metrics.serviceframework.followerservice.responsetime.p90{method_name=filterUsersFollowedByWithType}&target=max:ostrich.metrics.serviceframework.followerservice.responsetime.p99{method_name=filterUsersFollowedByWithType}',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=divide(sum:ostrich.counters.serviceframework.followerservice.requestcount{method_name=filterUsersFollowedByWithType},%2060)',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=divide(sum:ostrich.counters.serviceframework.followerservice.success{method_name=filterUsersFollowedByWithType},%2060)',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=divide(sum:ostrich.counters.serviceframework.followerservice.failure{method_name=filterUsersFollowedByWithType},%2060)',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=max:ostrich.metrics.serviceframework.followerservice.responsetime.p50{method_name=filterUsersFollowedWithType}&target=max:ostrich.metrics.serviceframework.followerservice.responsetime.p90{method_name=filterUsersFollowedWithType}&target=max:ostrich.metrics.serviceframework.followerservice.responsetime.p99{method_name=filterUsersFollowedWithType}',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=divide(sum:ostrich.counters.serviceframework.followerservice.requestcount{method_name=filterUsersFollowedWithType},%2060)',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=divide(sum:ostrich.counters.serviceframework.followerservice.success{method_name=filterUsersFollowedWithType},%2060)',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=divide(sum:ostrich.counters.serviceframework.followerservice.failure{method_name=filterUsersFollowedWithType},%2060)',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=max:ostrich.metrics.serviceframework.followerservice.responsetime.p50{method_name=followBoard}&target=max:ostrich.metrics.serviceframework.followerservice.responsetime.p90{method_name=followBoard}&target=max:ostrich.metrics.serviceframework.followerservice.responsetime.p99{method_name=followBoard}',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=divide(sum:ostrich.counters.serviceframework.followerservice.requestcount{method_name=followBoard},%2060)',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=divide(sum:ostrich.counters.serviceframework.followerservice.success{method_name=followBoard},%2060)',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=divide(sum:ostrich.counters.serviceframework.followerservice.failure{method_name=followBoard},%2060)',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=max:ostrich.metrics.serviceframework.followerservice.responsetime.p50{method_name=followInterests}&target=max:ostrich.metrics.serviceframework.followerservice.responsetime.p90{method_name=followInterests}&target=max:ostrich.metrics.serviceframework.followerservice.responsetime.p99{method_name=followInterests}',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=divide(sum:ostrich.counters.serviceframework.followerservice.requestcount{method_name=followInterests},%2060)',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=divide(sum:ostrich.counters.serviceframework.followerservice.success{method_name=followInterests},%2060)',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=divide(sum:ostrich.counters.serviceframework.followerservice.failure{method_name=followInterests},%2060)',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=max:ostrich.metrics.serviceframework.followerservice.responsetime.p50{method_name=followUser}&target=max:ostrich.metrics.serviceframework.followerservice.responsetime.p90{method_name=followUser}&target=max:ostrich.metrics.serviceframework.followerservice.responsetime.p99{method_name=followUser}',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=divide(sum:ostrich.counters.serviceframework.followerservice.requestcount{method_name=followUser},%2060)',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=divide(sum:ostrich.counters.serviceframework.followerservice.success{method_name=followUser},%2060)',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=divide(sum:ostrich.counters.serviceframework.followerservice.failure{method_name=followUser},%2060)',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=max:ostrich.metrics.serviceframework.followerservice.responsetime.p50{method_name=getBlockRelationship}&target=max:ostrich.metrics.serviceframework.followerservice.responsetime.p90{method_name=getBlockRelationship}&target=max:ostrich.metrics.serviceframework.followerservice.responsetime.p99{method_name=getBlockRelationship}',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=divide(sum:ostrich.counters.serviceframework.followerservice.requestcount{method_name=getBlockRelationship},%2060)',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=divide(sum:ostrich.counters.serviceframework.followerservice.success{method_name=getBlockRelationship},%2060)',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=divide(sum:ostrich.counters.serviceframework.followerservice.failure{method_name=getBlockRelationship},%2060)',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=max:ostrich.metrics.serviceframework.followerservice.responsetime.p50{method_name=getBoardFollowersV2}&target=max:ostrich.metrics.serviceframework.followerservice.responsetime.p90{method_name=getBoardFollowersV2}&target=max:ostrich.metrics.serviceframework.followerservice.responsetime.p99{method_name=getBoardFollowersV2}',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=divide(sum:ostrich.counters.serviceframework.followerservice.requestcount{method_name=getBoardFollowersV2},%2060)',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=divide(sum:ostrich.counters.serviceframework.followerservice.success{method_name=getBoardFollowersV2},%2060)',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=divide(sum:ostrich.counters.serviceframework.followerservice.failure{method_name=getBoardFollowersV2},%2060)',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=max:ostrich.metrics.serviceframework.followerservice.responsetime.p50{method_name=getBoardsFollowed2}&target=max:ostrich.metrics.serviceframework.followerservice.responsetime.p90{method_name=getBoardsFollowed2}&target=max:ostrich.metrics.serviceframework.followerservice.responsetime.p99{method_name=getBoardsFollowed2}',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=divide(sum:ostrich.counters.serviceframework.followerservice.requestcount{method_name=getBoardsFollowed2},%2060)',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=divide(sum:ostrich.counters.serviceframework.followerservice.success{method_name=getBoardsFollowed2},%2060)',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=divide(sum:ostrich.counters.serviceframework.followerservice.failure{method_name=getBoardsFollowed2},%2060)',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=max:ostrich.metrics.serviceframework.followerservice.responsetime.p50{method_name=getBoardsFollowedExplicitly}&target=max:ostrich.metrics.serviceframework.followerservice.responsetime.p90{method_name=getBoardsFollowedExplicitly}&target=max:ostrich.metrics.serviceframework.followerservice.responsetime.p99{method_name=getBoardsFollowedExplicitly}',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=divide(sum:ostrich.counters.serviceframework.followerservice.requestcount{method_name=getBoardsFollowedExplicitly},%2060)',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=divide(sum:ostrich.counters.serviceframework.followerservice.success{method_name=getBoardsFollowedExplicitly},%2060)',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=divide(sum:ostrich.counters.serviceframework.followerservice.failure{method_name=getBoardsFollowedExplicitly},%2060)',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=max:ostrich.metrics.serviceframework.followerservice.responsetime.p50{method_name=getBoardsUnfollowedExplicitly}&target=max:ostrich.metrics.serviceframework.followerservice.responsetime.p90{method_name=getBoardsUnfollowedExplicitly}&target=max:ostrich.metrics.serviceframework.followerservice.responsetime.p99{method_name=getBoardsUnfollowedExplicitly}',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=divide(sum:ostrich.counters.serviceframework.followerservice.requestcount{method_name=getBoardsUnfollowedExplicitly},%2060)',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=divide(sum:ostrich.counters.serviceframework.followerservice.success{method_name=getBoardsUnfollowedExplicitly},%2060)',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=divide(sum:ostrich.counters.serviceframework.followerservice.failure{method_name=getBoardsUnfollowedExplicitly},%2060)',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=max:ostrich.metrics.serviceframework.followerservice.responsetime.p50{method_name=getExplicitBoardFollowersV2}&target=max:ostrich.metrics.serviceframework.followerservice.responsetime.p90{method_name=getExplicitBoardFollowersV2}&target=max:ostrich.metrics.serviceframework.followerservice.responsetime.p99{method_name=getExplicitBoardFollowersV2}',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=divide(sum:ostrich.counters.serviceframework.followerservice.requestcount{method_name=getExplicitBoardFollowersV2},%2060)',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=divide(sum:ostrich.counters.serviceframework.followerservice.success{method_name=getExplicitBoardFollowersV2},%2060)',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=divide(sum:ostrich.counters.serviceframework.followerservice.failure{method_name=getExplicitBoardFollowersV2},%2060)',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=max:ostrich.metrics.serviceframework.followerservice.responsetime.p50{method_name=getExplicitMutualFollowers}&target=max:ostrich.metrics.serviceframework.followerservice.responsetime.p90{method_name=getExplicitMutualFollowers}&target=max:ostrich.metrics.serviceframework.followerservice.responsetime.p99{method_name=getExplicitMutualFollowers}',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=divide(sum:ostrich.counters.serviceframework.followerservice.requestcount{method_name=getExplicitMutualFollowers},%2060)',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=divide(sum:ostrich.counters.serviceframework.followerservice.success{method_name=getExplicitMutualFollowers},%2060)',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=divide(sum:ostrich.counters.serviceframework.followerservice.failure{method_name=getExplicitMutualFollowers},%2060)',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=max:ostrich.metrics.serviceframework.followerservice.responsetime.p50{method_name=getFollowedInterestsCountForUsers}&target=max:ostrich.metrics.serviceframework.followerservice.responsetime.p90{method_name=getFollowedInterestsCountForUsers}&target=max:ostrich.metrics.serviceframework.followerservice.responsetime.p99{method_name=getFollowedInterestsCountForUsers}',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=divide(sum:ostrich.counters.serviceframework.followerservice.requestcount{method_name=getFollowedInterestsCountForUsers},%2060)',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=divide(sum:ostrich.counters.serviceframework.followerservice.success{method_name=getFollowedInterestsCountForUsers},%2060)',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=divide(sum:ostrich.counters.serviceframework.followerservice.failure{method_name=getFollowedInterestsCountForUsers},%2060)',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=max:ostrich.metrics.serviceframework.followerservice.responsetime.p50{method_name=getInterestFollowerCount}&target=max:ostrich.metrics.serviceframework.followerservice.responsetime.p90{method_name=getInterestFollowerCount}&target=max:ostrich.metrics.serviceframework.followerservice.responsetime.p99{method_name=getInterestFollowerCount}',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=divide(sum:ostrich.counters.serviceframework.followerservice.requestcount{method_name=getInterestFollowerCount},%2060)',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=divide(sum:ostrich.counters.serviceframework.followerservice.success{method_name=getInterestFollowerCount},%2060)',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=divide(sum:ostrich.counters.serviceframework.followerservice.failure{method_name=getInterestFollowerCount},%2060)',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=max:ostrich.metrics.serviceframework.followerservice.responsetime.p50{method_name=getInterestFollowerIds}&target=max:ostrich.metrics.serviceframework.followerservice.responsetime.p90{method_name=getInterestFollowerIds}&target=max:ostrich.metrics.serviceframework.followerservice.responsetime.p99{method_name=getInterestFollowerIds}',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=divide(sum:ostrich.counters.serviceframework.followerservice.requestcount{method_name=getInterestFollowerIds},%2060)',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=divide(sum:ostrich.counters.serviceframework.followerservice.success{method_name=getInterestFollowerIds},%2060)',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=divide(sum:ostrich.counters.serviceframework.followerservice.failure{method_name=getInterestFollowerIds},%2060)',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=max:ostrich.metrics.serviceframework.followerservice.responsetime.p50{method_name=getUserFollowedInterestsWithProperties}&target=max:ostrich.metrics.serviceframework.followerservice.responsetime.p90{method_name=getUserFollowedInterestsWithProperties}&target=max:ostrich.metrics.serviceframework.followerservice.responsetime.p99{method_name=getUserFollowedInterestsWithProperties}',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=divide(sum:ostrich.counters.serviceframework.followerservice.requestcount{method_name=getUserFollowedInterestsWithProperties},%2060)',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=divide(sum:ostrich.counters.serviceframework.followerservice.success{method_name=getUserFollowedInterestsWithProperties},%2060)',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=divide(sum:ostrich.counters.serviceframework.followerservice.failure{method_name=getUserFollowedInterestsWithProperties},%2060)',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=max:ostrich.metrics.serviceframework.followerservice.responsetime.p50{method_name=getUserFollowersV2}&target=max:ostrich.metrics.serviceframework.followerservice.responsetime.p90{method_name=getUserFollowersV2}&target=max:ostrich.metrics.serviceframework.followerservice.responsetime.p99{method_name=getUserFollowersV2}',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=divide(sum:ostrich.counters.serviceframework.followerservice.requestcount{method_name=getUserFollowersV2},%2060)',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=divide(sum:ostrich.counters.serviceframework.followerservice.success{method_name=getUserFollowersV2},%2060)',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=divide(sum:ostrich.counters.serviceframework.followerservice.failure{method_name=getUserFollowersV2},%2060)',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=max:ostrich.metrics.serviceframework.followerservice.responsetime.p50{method_name=getUserFollowersWithTypeV2}&target=max:ostrich.metrics.serviceframework.followerservice.responsetime.p90{method_name=getUserFollowersWithTypeV2}&target=max:ostrich.metrics.serviceframework.followerservice.responsetime.p99{method_name=getUserFollowersWithTypeV2}',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=divide(sum:ostrich.counters.serviceframework.followerservice.requestcount{method_name=getUserFollowersWithTypeV2},%2060)',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=divide(sum:ostrich.counters.serviceframework.followerservice.success{method_name=getUserFollowersWithTypeV2},%2060)',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=divide(sum:ostrich.counters.serviceframework.followerservice.failure{method_name=getUserFollowersWithTypeV2},%2060)',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=max:ostrich.metrics.serviceframework.followerservice.responsetime.p50{method_name=getUserInterests}&target=max:ostrich.metrics.serviceframework.followerservice.responsetime.p90{method_name=getUserInterests}&target=max:ostrich.metrics.serviceframework.followerservice.responsetime.p99{method_name=getUserInterests}',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=divide(sum:ostrich.counters.serviceframework.followerservice.requestcount{method_name=getUserInterests},%2060)',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=divide(sum:ostrich.counters.serviceframework.followerservice.success{method_name=getUserInterests},%2060)',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=divide(sum:ostrich.counters.serviceframework.followerservice.failure{method_name=getUserInterests},%2060)',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=max:ostrich.metrics.serviceframework.followerservice.responsetime.p50{method_name=getUsersBlocked}&target=max:ostrich.metrics.serviceframework.followerservice.responsetime.p90{method_name=getUsersBlocked}&target=max:ostrich.metrics.serviceframework.followerservice.responsetime.p99{method_name=getUsersBlocked}',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=divide(sum:ostrich.counters.serviceframework.followerservice.requestcount{method_name=getUsersBlocked},%2060)',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=divide(sum:ostrich.counters.serviceframework.followerservice.success{method_name=getUsersBlocked},%2060)',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=divide(sum:ostrich.counters.serviceframework.followerservice.failure{method_name=getUsersBlocked},%2060)',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=max:ostrich.metrics.serviceframework.followerservice.responsetime.p50{method_name=getUsersFollowedV2}&target=max:ostrich.metrics.serviceframework.followerservice.responsetime.p90{method_name=getUsersFollowedV2}&target=max:ostrich.metrics.serviceframework.followerservice.responsetime.p99{method_name=getUsersFollowedV2}',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=divide(sum:ostrich.counters.serviceframework.followerservice.requestcount{method_name=getUsersFollowedV2},%2060)',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=divide(sum:ostrich.counters.serviceframework.followerservice.success{method_name=getUsersFollowedV2},%2060)',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=divide(sum:ostrich.counters.serviceframework.followerservice.failure{method_name=getUsersFollowedV2},%2060)',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=max:ostrich.metrics.serviceframework.followerservice.responsetime.p50{method_name=getUsersFollowedWithParams}&target=max:ostrich.metrics.serviceframework.followerservice.responsetime.p90{method_name=getUsersFollowedWithParams}&target=max:ostrich.metrics.serviceframework.followerservice.responsetime.p99{method_name=getUsersFollowedWithParams}',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=divide(sum:ostrich.counters.serviceframework.followerservice.requestcount{method_name=getUsersFollowedWithParams},%2060)',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=divide(sum:ostrich.counters.serviceframework.followerservice.success{method_name=getUsersFollowedWithParams},%2060)',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=divide(sum:ostrich.counters.serviceframework.followerservice.failure{method_name=getUsersFollowedWithParams},%2060)',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=max:ostrich.metrics.serviceframework.followerservice.responsetime.p50{method_name=isFollowingBoard}&target=max:ostrich.metrics.serviceframework.followerservice.responsetime.p90{method_name=isFollowingBoard}&target=max:ostrich.metrics.serviceframework.followerservice.responsetime.p99{method_name=isFollowingBoard}',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=divide(sum:ostrich.counters.serviceframework.followerservice.requestcount{method_name=isFollowingBoard},%2060)',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=divide(sum:ostrich.counters.serviceframework.followerservice.success{method_name=isFollowingBoard},%2060)',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=divide(sum:ostrich.counters.serviceframework.followerservice.failure{method_name=isFollowingBoard},%2060)',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=max:ostrich.metrics.serviceframework.followerservice.responsetime.p50{method_name=isFollowingUserOrAnyBoard}&target=max:ostrich.metrics.serviceframework.followerservice.responsetime.p90{method_name=isFollowingUserOrAnyBoard}&target=max:ostrich.metrics.serviceframework.followerservice.responsetime.p99{method_name=isFollowingUserOrAnyBoard}',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=divide(sum:ostrich.counters.serviceframework.followerservice.requestcount{method_name=isFollowingUserOrAnyBoard},%2060)',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=divide(sum:ostrich.counters.serviceframework.followerservice.success{method_name=isFollowingUserOrAnyBoard},%2060)',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=divide(sum:ostrich.counters.serviceframework.followerservice.failure{method_name=isFollowingUserOrAnyBoard},%2060)',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=max:ostrich.metrics.serviceframework.followerservice.responsetime.p50{method_name=isUserDeactivated}&target=max:ostrich.metrics.serviceframework.followerservice.responsetime.p90{method_name=isUserDeactivated}&target=max:ostrich.metrics.serviceframework.followerservice.responsetime.p99{method_name=isUserDeactivated}',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=divide(sum:ostrich.counters.serviceframework.followerservice.requestcount{method_name=isUserDeactivated},%2060)',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=divide(sum:ostrich.counters.serviceframework.followerservice.success{method_name=isUserDeactivated},%2060)',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=divide(sum:ostrich.counters.serviceframework.followerservice.failure{method_name=isUserDeactivated},%2060)',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=max:ostrich.metrics.serviceframework.followerservice.responsetime.p50{method_name=reactivateUser}&target=max:ostrich.metrics.serviceframework.followerservice.responsetime.p90{method_name=reactivateUser}&target=max:ostrich.metrics.serviceframework.followerservice.responsetime.p99{method_name=reactivateUser}',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=divide(sum:ostrich.counters.serviceframework.followerservice.requestcount{method_name=reactivateUser},%2060)',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=divide(sum:ostrich.counters.serviceframework.followerservice.success{method_name=reactivateUser},%2060)',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=divide(sum:ostrich.counters.serviceframework.followerservice.failure{method_name=reactivateUser},%2060)',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=max:ostrich.metrics.serviceframework.followerservice.responsetime.p50{method_name=removeInterest}&target=max:ostrich.metrics.serviceframework.followerservice.responsetime.p90{method_name=removeInterest}&target=max:ostrich.metrics.serviceframework.followerservice.responsetime.p99{method_name=removeInterest}',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=divide(sum:ostrich.counters.serviceframework.followerservice.requestcount{method_name=removeInterest},%2060)',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=divide(sum:ostrich.counters.serviceframework.followerservice.success{method_name=removeInterest},%2060)',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=divide(sum:ostrich.counters.serviceframework.followerservice.failure{method_name=removeInterest},%2060)',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=max:ostrich.metrics.serviceframework.followerservice.responsetime.p50{method_name=unblockUser}&target=max:ostrich.metrics.serviceframework.followerservice.responsetime.p90{method_name=unblockUser}&target=max:ostrich.metrics.serviceframework.followerservice.responsetime.p99{method_name=unblockUser}',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=divide(sum:ostrich.counters.serviceframework.followerservice.requestcount{method_name=unblockUser},%2060)',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=divide(sum:ostrich.counters.serviceframework.followerservice.success{method_name=unblockUser},%2060)',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=divide(sum:ostrich.counters.serviceframework.followerservice.failure{method_name=unblockUser},%2060)',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=max:ostrich.metrics.serviceframework.followerservice.responsetime.p50{method_name=unfollowBoard}&target=max:ostrich.metrics.serviceframework.followerservice.responsetime.p90{method_name=unfollowBoard}&target=max:ostrich.metrics.serviceframework.followerservice.responsetime.p99{method_name=unfollowBoard}',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=divide(sum:ostrich.counters.serviceframework.followerservice.requestcount{method_name=unfollowBoard},%2060)',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=divide(sum:ostrich.counters.serviceframework.followerservice.success{method_name=unfollowBoard},%2060)',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=divide(sum:ostrich.counters.serviceframework.followerservice.failure{method_name=unfollowBoard},%2060)',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=max:ostrich.metrics.serviceframework.followerservice.responsetime.p50{method_name=unfollowInterest}&target=max:ostrich.metrics.serviceframework.followerservice.responsetime.p90{method_name=unfollowInterest}&target=max:ostrich.metrics.serviceframework.followerservice.responsetime.p99{method_name=unfollowInterest}',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=divide(sum:ostrich.counters.serviceframework.followerservice.requestcount{method_name=unfollowInterest},%2060)',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=divide(sum:ostrich.counters.serviceframework.followerservice.success{method_name=unfollowInterest},%2060)',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=divide(sum:ostrich.counters.serviceframework.followerservice.failure{method_name=unfollowInterest},%2060)',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=max:ostrich.metrics.serviceframework.followerservice.responsetime.p50{method_name=unfollowUserOrAnyBoards}&target=max:ostrich.metrics.serviceframework.followerservice.responsetime.p90{method_name=unfollowUserOrAnyBoards}&target=max:ostrich.metrics.serviceframework.followerservice.responsetime.p99{method_name=unfollowUserOrAnyBoards}',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=divide(sum:ostrich.counters.serviceframework.followerservice.requestcount{method_name=unfollowUserOrAnyBoards},%2060)',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=divide(sum:ostrich.counters.serviceframework.followerservice.success{method_name=unfollowUserOrAnyBoards},%2060)',
-    'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250&target=divide(sum:ostrich.counters.serviceframework.followerservice.failure{method_name=unfollowUserOrAnyBoards},%2060)'
-]
 
 def make_pair_request_and_compare_response(url_metron):
+    # constuct the other url
     url_hbase = url_metron.replace('8080', '8081')
+
+    # make request and get response
     response_metron = json.loads(requests.get(url_metron).text)
     response_hbase = json.loads(requests.get(url_hbase).text)
+
+    # drop the unnecessary fileds
+    for r in response_metron:
+        r.pop('stats', None)
+        r.pop('target', None)
+        r.pop('curl_cmd', None)
+        r.pop('metric', None)
+        r.pop('source_url', None)
+        r.pop('tags', None)
+        r['data_points_cnt'] = len(r['datapoints'])
+        for pair in r['datapoints']:
+            pair[1] = int(pair[1])
+    for r in response_hbase:
+        r.pop('stats', None)
+        r.pop('target', None)
+        r.pop('curl_cmd', None)
+        r.pop('metric', None)
+        r.pop('source_url', None)
+        r.pop('tags', None)
+        r['data_points_cnt'] = len(r['datapoints'])
+        for pair in r['datapoints']:
+            pair[1] = int(pair[1])
+
+    # calculate the diff
     df = diff(response_metron, response_hbase)
+
+    # output result
     if df.diffs:
         print '[different]nurl metron: ' + url_metron
         print df
@@ -201,7 +50,21 @@ def make_pair_request_and_compare_response(url_metron):
 
 
 def main():
-    for url_metron in url_metron_list:
+    dashboard_name = sys.argv[1]
+    request_url_prefix = 'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250'
+    defs.load_dashboards()
+    dashboard_data = defs.DASHBOARDS.get(dashboard_name)
+    if not dashboard_data:
+        print 'Wrong dashboard name. E.x. core_services/pinandboardservice'
+
+    all_request_urls = []
+    for section_data in dashboard_data['homepage']:
+        for metrics in section_data.values()[0]:
+            request_url = request_url_prefix
+            for metric in metrics['metrics']:
+                request_url += ('&target=' + metric['stat'])
+            all_request_urls.append(request_url)
+    for url_metron in all_request_urls:
         make_pair_request_and_compare_response(url_metron)
 
 if __name__ == '__main__':
