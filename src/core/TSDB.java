@@ -194,7 +194,7 @@ public final class TSDB {
     //   this.client = client;
     // }
     this.client = client;
-    
+
     // SALT AND UID WIDTHS
     // Users really wanted this to be set via config instead of having to
     // compile. Hopefully they know NOT to change these after writing data.
@@ -634,6 +634,10 @@ public final class TSDB {
    * @param collector The collector to use.
    */
   public void collectStats(final StatsCollector collector) {
+    // NOTE: This call fails in Yuvi. So, disable this path to reduce logspam.
+    // TODO: In future collect Yuvi specific stats in this call.
+    return;
+
     final byte[][] kinds = {
         METRICS_QUAL.getBytes(CHARSET),
         TAG_NAME_QUAL.getBytes(CHARSET),
