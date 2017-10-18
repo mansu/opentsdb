@@ -28,8 +28,6 @@ import com.stumbleupon.async.Callback;
 import com.stumbleupon.async.Deferred;
 
 import net.opentsdb.meta.Annotation;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Groups multiple spans together and offers a dynamic "view" on them.
@@ -56,8 +54,6 @@ import org.slf4j.LoggerFactory;
 final class SpanGroup implements DataPoints {
   /** Annotations */
   private final ArrayList<Annotation> annotations;
-
-  private static final Logger LOG = LoggerFactory.getLogger(SpanGroup.class);
 
   /** Start time (UNIX timestamp in seconds or ms) on 32 bits ("unsigned" int). */
   private final long start_time;
@@ -88,28 +84,28 @@ final class SpanGroup implements DataPoints {
 
   /** If true, use rate of change instead of actual values. */
   private final boolean rate;
-  
+
   /** Specifies the various options for rate calculations */
-  private RateOptions rate_options; 
+  private RateOptions rate_options;
 
   /** Aggregator to use to aggregate data points from different Spans. */
   private final Aggregator aggregator;
 
   /** Downsampling specification to use, if any (can be {@code null}). */
   private DownsamplingSpecification downsampler;
-  
-  /** Start timestamp of the query for filtering */  
+
+  /** Start timestamp of the query for filtering */
   private final long query_start;
-  
+
   /** End timestamp of the query for filtering */
-  private final long query_end;  
+  private final long query_end;
 
   /** Index of the query in the TSQuery class */
   private final int query_index;
-  
+
   /** The TSDB to which we belong, used for resolution */
   private final TSDB tsdb;
-  
+
   /**
    * Ctor.
    * @param tsdb The TSDB we belong to.
@@ -161,7 +157,7 @@ final class SpanGroup implements DataPoints {
             final boolean rate, final RateOptions rate_options,
             final Aggregator aggregator,
             final long interval, final Aggregator downsampler) {
-    this(tsdb, start_time, end_time, spans, rate, rate_options, aggregator, 
+    this(tsdb, start_time, end_time, spans, rate, rate_options, aggregator,
         interval, downsampler, -1, FillPolicy.NONE);
   }
 
@@ -194,12 +190,12 @@ final class SpanGroup implements DataPoints {
             final long interval, final Aggregator downsampler, final int query_index,
             final FillPolicy fill_policy) {
      this(tsdb, start_time, end_time, spans, rate, rate_options, aggregator,
-         downsampler != null ? 
-             new DownsamplingSpecification(interval, downsampler, fill_policy) : 
+         downsampler != null ?
+             new DownsamplingSpecification(interval, downsampler, fill_policy) :
            null,
          0, 0, query_index);
   }
-  
+
   /**
    * Ctor.
    * @param tsdb The TSDB we belong to.
@@ -220,20 +216,20 @@ final class SpanGroup implements DataPoints {
    * @since 2.3
    */
   SpanGroup(final TSDB tsdb,
-            final long start_time, 
+            final long start_time,
             final long end_time,
             final Iterable<Span> spans,
-            final boolean rate, 
+            final boolean rate,
             final RateOptions rate_options,
             final Aggregator aggregator,
-            final DownsamplingSpecification downsampler, 
+            final DownsamplingSpecification downsampler,
             final long query_start,
             final long query_end,
             final int query_index) {
      annotations = new ArrayList<Annotation>();
-     this.start_time = (start_time & Const.SECOND_MASK) == 0 ? 
+     this.start_time = (start_time & Const.SECOND_MASK) == 0 ?
          start_time * 1000 : start_time;
-     this.end_time = (end_time & Const.SECOND_MASK) == 0 ? 
+     this.end_time = (end_time & Const.SECOND_MASK) == 0 ?
          end_time * 1000 : end_time;
      if (spans != null) {
        for (final Span span : spans) {
@@ -249,7 +245,7 @@ final class SpanGroup implements DataPoints {
      this.query_index = query_index;
      this.tsdb = tsdb;
   }
-  
+
   /**
    * Adds a span to this group, provided that it's in the right time range.
    * <b>Must not</b> be called once {@link #getTags} or
@@ -264,9 +260,9 @@ final class SpanGroup implements DataPoints {
 //    }
 
     // normalize timestamps to milliseconds for proper comparison
-    final long start = (start_time & Const.SECOND_MASK) == 0 ? 
+    final long start = (start_time & Const.SECOND_MASK) == 0 ?
         start_time * 1000 : start_time;
-    final long end = (end_time & Const.SECOND_MASK) == 0 ? 
+    final long end = (end_time & Const.SECOND_MASK) == 0 ?
         end_time * 1000 : end_time;
 
     if (span.size() == 0) {
@@ -301,11 +297,6 @@ final class SpanGroup implements DataPoints {
         annotations.addAll(span.getAnnotations());
       }
     }
-
-    //For debugging
-    //TODO: remove this
-    LOG.debug("This SpanGroup instance is" + this.toString());
-    LOG.debug(span.getFullMetricName());
 
     updateTagsAndAggregatedTagsforYuvi(span.getTagsInTS());
   }
@@ -349,7 +340,7 @@ final class SpanGroup implements DataPoints {
   /**
    * Computes the intersection set + symmetric difference of tags in all spans.
    * This method loads the UID aggregated list and tag pair maps with byte arrays
-   * but does not actually resolve the UIDs to strings. 
+   * but does not actually resolve the UIDs to strings.
    * On the first run, it will initialize the UID collections (which may be empty)
    * and subsequent calls will skip processing.
    */
@@ -362,23 +353,23 @@ final class SpanGroup implements DataPoints {
       aggregated_tag_uids = new HashSet<byte[]>();
       return;
     }
-    
+
     // local tag uids
     final ByteMap<byte[]> tag_set = new ByteMap<byte[]>();
-    
+
     // value is always null, we just want the set of unique keys
     final ByteMap<byte[]> discards = new ByteMap<byte[]>();
     final Iterator<Span> it = spans.iterator();
     while (it.hasNext()) {
       final Span span = it.next();
       final ByteMap<byte[]> uids = span.getTagUids();
-      
+
       for (final Map.Entry<byte[], byte[]> tag_pair : uids.entrySet()) {
         // we already know it's an aggregated tag
         if (discards.containsKey(tag_pair.getKey())) {
           continue;
         }
-        
+
         final byte[] tag_value = tag_set.get(tag_pair.getKey());
         if (tag_value == null) {
           tag_set.put(tag_pair.getKey(), tag_pair.getValue());
@@ -389,7 +380,7 @@ final class SpanGroup implements DataPoints {
         }
       }
     }
-    
+
     aggregated_tag_uids = discards.keySet();
     tag_uids = tag_set;
   }
@@ -403,9 +394,9 @@ final class SpanGroup implements DataPoints {
       throw new RuntimeException("Should never be here", e);
     }
   }
-  
+
   public Deferred<String> metricNameAsync() {
-    return spans.isEmpty() ? Deferred.fromResult("") : 
+    return spans.isEmpty() ? Deferred.fromResult("") :
       spans.get(0).metricNameAsync();
   }
 
@@ -413,7 +404,7 @@ final class SpanGroup implements DataPoints {
   public byte[] metricUID() {
     return spans.isEmpty() ? new byte[] {} : spans.get(0).metricUID();
   }
-  
+
   public Map<String, String> getTags() {
     try {
       return getTagsAsync().joinUninterruptibly();
@@ -423,21 +414,21 @@ final class SpanGroup implements DataPoints {
       throw new RuntimeException("Should never be here", e);
     }
   }
-  
+
   public Deferred<Map<String, String>> getTagsAsync() {
     if (tags != null) {
       return Deferred.fromResult(tags);
     }
-    
+
     if (spans.isEmpty()) {
       tags = new HashMap<String, String>(0);
       return Deferred.fromResult(tags);
     }
-    
+
     if (tag_uids == null) {
       computeTags();
     }
-    
+
     return resolveTags(tag_uids);
   }
 
@@ -448,7 +439,7 @@ final class SpanGroup implements DataPoints {
     }
     return tag_uids;
   }
-  
+
   public List<String> getAggregatedTags() {
     try {
       return getAggregatedTagsAsync().joinUninterruptibly();
@@ -458,34 +449,34 @@ final class SpanGroup implements DataPoints {
       throw new RuntimeException("Should never be here", e);
     }
   }
-  
+
   public Deferred<List<String>> getAggregatedTagsAsync() {
     if (aggregated_tags != null) {
       return Deferred.fromResult(aggregated_tags);
     }
-    
+
     if (spans.isEmpty()) {
       aggregated_tags = new ArrayList<String>(0);
       return Deferred.fromResult(aggregated_tags);
     }
-    
+
     if (aggregated_tag_uids == null) {
       computeTags();
     }
-    
+
     return resolveAggTags(aggregated_tag_uids);
   }
-  
+
   @Override
   public List<byte[]> getAggregatedTagUids() {
     if (aggregated_tag_uids != null) {
       return new ArrayList<byte[]>(aggregated_tag_uids);
     }
-    
+
     if (spans.isEmpty()) {
       return Collections.emptyList();
     }
-    
+
     if (aggregated_tag_uids == null) {
       computeTags();
     }
@@ -499,7 +490,7 @@ final class SpanGroup implements DataPoints {
     }
     return tsuids;
   }
-  
+
   /**
    * Compiles the annotations for each span into a new array list
    * @return Null if none of the spans had any annotations, a list if one or
@@ -610,13 +601,13 @@ final class SpanGroup implements DataPoints {
       return Deferred.fromResult(null);
     }
     aggregated_tags = new ArrayList<String>(tagks.size());
-    
-    final List<Deferred<String>> names = 
+
+    final List<Deferred<String>> names =
         new ArrayList<Deferred<String>>(tagks.size());
     for (final byte[] tagk : tagks) {
       names.add(tsdb.tag_names.getNameAsync(tagk));
     }
-    
+
     /** Adds the names to the aggregated_tags list */
     final class ResolveCB implements Callback<List<String>, ArrayList<String>> {
       @Override
@@ -627,10 +618,10 @@ final class SpanGroup implements DataPoints {
         return aggregated_tags;
       }
     }
-    
+
     return Deferred.group(names).addCallback(new ResolveCB());
   }
-  
+
   /**
    * Resolves the tags to their names, loading them into {@link tags} after
    * initializing that map.
@@ -643,10 +634,10 @@ final class SpanGroup implements DataPoints {
       return Deferred.fromResult(null);
     }
     tags = new HashMap<String, String>(tag_uids.size());
-    
-    final List<Deferred<Object>> deferreds = 
+
+    final List<Deferred<Object>> deferreds =
         new ArrayList<Deferred<Object>>(tag_uids.size());
-    
+
     /** Dumps the pairs into the map in the correct order */
     final class PairCB implements Callback<Object, ArrayList<String>> {
       @Override
@@ -655,24 +646,24 @@ final class SpanGroup implements DataPoints {
         return null;
       }
     }
-    
+
     /** Callback executed once all of the pairs are resolved and stored in the map */
     final class GroupCB implements Callback<Map<String, String>, ArrayList<Object>> {
       @Override
-      public Map<String, String> call(final ArrayList<Object> group) 
+      public Map<String, String> call(final ArrayList<Object> group)
           throws Exception {
         return tags;
       }
     }
-    
+
     for (Map.Entry<byte[], byte[]> tag_pair : tag_uids.entrySet()) {
-      final List<Deferred<String>> resolve_pair = 
+      final List<Deferred<String>> resolve_pair =
           new ArrayList<Deferred<String>>(2);
       resolve_pair.add(tsdb.tag_names.getNameAsync(tag_pair.getKey()));
       resolve_pair.add(tsdb.tag_values.getNameAsync(tag_pair.getValue()));
       deferreds.add(Deferred.groupInOrder(resolve_pair).addCallback(new PairCB()));
     }
-    
+
     return Deferred.group(deferreds).addCallback(new GroupCB());
   }
 }
