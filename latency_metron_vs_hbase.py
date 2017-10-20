@@ -1,4 +1,5 @@
 #!/usr/bin/python
+import csv
 import os
 import subprocess
 import sys
@@ -14,6 +15,31 @@ how to run
 e.x.
 ./latency_metron_vs_hbase.py statsboard.log statsboard_no_cache.log
 """
+
+
+def collect_stats(metron_points, hbase_points, query):
+    metron_points = sorted(metron_points)
+    hbase_points = sorted(hbase_points)
+    metron_length = len(metron_points)
+    hbase_length = len(hbase_points)
+
+    avg_metron = sum(metron_points)/len(metron_points)
+    avg_hbase = sum(hbase_points)/len(hbase_points)
+
+    p50_metron = metron_points[metron_length / 2]
+    p50_hbase = hbase_points[hbase_length / 2]
+
+    p90_metron = metron_points[int(metron_length * .9)]
+    p90_hbase = hbase_points[int(hbase_length * .9)]
+
+    p99_metron = metron_points[int(metron_length * .99)]
+    p99_hbase = hbase_points[int(hbase_length * .99)]
+
+    max_metron = metron_points[-1]
+    max_hbase = hbase_points[-1]
+
+    return (metron_length, avg_metron, p50_metron, p90_metron, p99_metron, max_metron, hbase_length, avg_hbase, p50_hbase, p90_hbase, p99_hbase, max_hbase, query)
+
 
 def main():
     cmd_fmt = "grep 'elapsed ' %s | awk -F 'total, |INFO: |elapsed for ' '{print $3, $4}' | awk '{print $1, substr($0, index($0,$3))}'"
@@ -33,20 +59,23 @@ def main():
             if log_file not in request_to_time_mapping[query]:
                 request_to_time_mapping[query][log_file] = []
             request_to_time_mapping[query][log_file].append(time)
-    avg_time = {'metron': [], 'hbase': []}
+    metron_all_points = []
+    hbase_all_points = []
+    stats = [('metron:length', 'metron:avg', 'metron:p50', 'metron:p90', 'metron:p99', 'metron:max', 'hbase:length', 'hbase:avg', 'hbase:p50', 'hbase:p90', 'hbase:p99', 'hbase:max', 'query')]
     for query, time_info in request_to_time_mapping.iteritems():
-        if not time_info.get(log_metron) or not time_info.get(log_hbase):
+        metron_points = time_info.get(log_metron)
+        hbase_points = time_info.get(log_hbase)
+        if not metron_points or not hbase_points:
             continue
-        avg_metron = sum(time_info[log_metron])/len(time_info[log_metron])
-        avg_hbase = sum(time_info[log_hbase])/len(time_info[log_hbase])
-        avg_time['metron'].append(avg_metron)
-        avg_time['hbase'].append(avg_hbase)
-        print '**************************************************************'
-        print query
-        print 'metron: ', avg_metron, 'hbase', avg_hbase
-    print 'unweighted avg metron: ', sum(avg_time['metron'])/len(avg_time['metron'])
-    print 'unweighted avg hbase: ', sum(avg_time['hbase'])/len(avg_time['hbase'])
+        stats.append(collect_stats(metron_points, hbase_points, query))
+        metron_all_points += metron_points
+        hbase_all_points += hbase_points
+    stats.append(collect_stats(metron_all_points, hbase_all_points, 'summary'))
+    with open('latency.csv', 'wb') as f:
+        writer = csv.writer(f)
+        writer.writerows(stats)
 
 
 if __name__ == '__main__':
     main()
+
