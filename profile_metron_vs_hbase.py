@@ -53,10 +53,13 @@ def main():
     dashboard_name = sys.argv[1]
     request_url_prefix = 'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250'
     defs.load_dashboards()
+    print 'Building dashboard board data...'
     dashboard_data = defs.DASHBOARDS.get(dashboard_name)
+    print 'Finished.'
     if not dashboard_data:
         print 'Wrong dashboard name. E.x. core_services/pinandboardservice'
 
+    print 'Building requests urls...'
     all_request_urls = []
     for section_data in dashboard_data['homepage']:
         for metrics in section_data.values()[0]:
@@ -64,8 +67,11 @@ def main():
             for metric in metrics['metrics']:
                 request_url += ('&target=' + metric['stat'])
             all_request_urls.append(request_url)
+    print 'Finished.'
+    print 'Making requests and compare...'
     for url_metron in all_request_urls:
         make_pair_request_and_compare_response(url_metron)
+    print 'Finished.'
 
 if __name__ == '__main__':
     main()
