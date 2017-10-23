@@ -60,7 +60,11 @@ def main():
                 request_to_time_mapping[query][log_file] = []
             request_to_time_mapping[query][log_file].append(time)
     metron_all_points = []
+    metron_fs_points = []
+    metron_pbs_points = []
     hbase_all_points = []
+    hbase_fs_points = []
+    hbase_pbs_points = []
     stats = [('metron:length', 'metron:avg', 'metron:p50', 'metron:p90', 'metron:p99', 'metron:max', 'hbase:length', 'hbase:avg', 'hbase:p50', 'hbase:p90', 'hbase:p99', 'hbase:max', 'query')]
     for query, time_info in request_to_time_mapping.iteritems():
         metron_points = time_info.get(log_metron)
@@ -70,6 +74,14 @@ def main():
         stats.append(collect_stats(metron_points, hbase_points, query))
         metron_all_points += metron_points
         hbase_all_points += hbase_points
+        if 'followerservice' in query:
+            metron_fs_points += metron_points
+            hbase_fs_points += hbase_points
+        elif 'pinandboardservice' in query:
+            metron_pbs_points += metron_points
+            hbase_pbs_points += hbase_points
+    stats.append(collect_stats(metron_fs_points, hbase_fs_points, 'summary:followerservice'))
+    stats.append(collect_stats(metron_pbs_points, hbase_pbs_points, 'summary:pinandboardservice'))
     stats.append(collect_stats(metron_all_points, hbase_all_points, 'summary'))
     with open('latency.csv', 'wb') as f:
         writer = csv.writer(f)
