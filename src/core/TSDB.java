@@ -639,56 +639,11 @@ public final class TSDB {
         TAG_NAME_QUAL.getBytes(CHARSET),
         TAG_VALUE_QUAL.getBytes(CHARSET)
       };
-    try {
-      final Map<String, Long> used_uids = UniqueId.getUsedUIDs(this, kinds)
-        .joinUninterruptibly();
-
-      collectUidStats(metrics, collector);
-      if (config.getBoolean("tsd.core.uid.random_metrics")) {
-        collector.record("uid.ids-used", 0, "kind=" + METRICS_QUAL);
-        collector.record("uid.ids-available", 0, "kind=" + METRICS_QUAL);
-      } else {
-        collector.record("uid.ids-used", used_uids.get(METRICS_QUAL),
-            "kind=" + METRICS_QUAL);
-        collector.record("uid.ids-available",
-            (Internal.getMaxUnsignedValueOnBytes(metrics.width()) -
-                used_uids.get(METRICS_QUAL)), "kind=" + METRICS_QUAL);
-      }
-
-      collectUidStats(tag_names, collector);
-      collector.record("uid.ids-used", used_uids.get(TAG_NAME_QUAL),
-          "kind=" + TAG_NAME_QUAL);
-      collector.record("uid.ids-available",
-          (Internal.getMaxUnsignedValueOnBytes(tag_names.width()) -
-              used_uids.get(TAG_NAME_QUAL)),
-          "kind=" + TAG_NAME_QUAL);
-
-      collectUidStats(tag_values, collector);
-      collector.record("uid.ids-used", used_uids.get(TAG_VALUE_QUAL),
-          "kind=" + TAG_VALUE_QUAL);
-      collector.record("uid.ids-available",
-          (Internal.getMaxUnsignedValueOnBytes(tag_values.width()) -
-              used_uids.get(TAG_VALUE_QUAL)), "kind=" + TAG_VALUE_QUAL);
-
-    } catch (Exception e) {
-      throw new RuntimeException("Shouldn't be here", e);
-    }
-
-    collector.record("uid.filter.rejected", rejected_dps.get(), "kind=raw");
-    collector.record("uid.filter.rejected", rejected_aggregate_dps.get(),
-        "kind=aggregate");
 
     {
       final Runtime runtime = Runtime.getRuntime();
       collector.record("jvm.ramfree", runtime.freeMemory());
       collector.record("jvm.ramused", runtime.totalMemory());
-    }
-
-    collector.addExtraTag("class", "IncomingDataPoints");
-    try {
-      collector.record("hbase.latency", IncomingDataPoints.putlatency, "method=put");
-    } finally {
-      collector.clearExtraTag("class");
     }
 
     collector.addExtraTag("class", "TSDB");
@@ -697,39 +652,6 @@ public final class TSDB {
     } finally {
       collector.clearExtraTag("class");
     }
-
-    collector.addExtraTag("class", "TsdbQuery");
-    try {
-      collector.record("hbase.latency", TsdbQuery.scanlatency, "method=scan");
-    } finally {
-      collector.clearExtraTag("class");
-    }
-    final ClientStats stats = client.stats();
-    collector.record("hbase.root_lookups", stats.rootLookups());
-    collector.record("hbase.meta_lookups",
-                     stats.uncontendedMetaLookups(), "type=uncontended");
-    collector.record("hbase.meta_lookups",
-                     stats.contendedMetaLookups(), "type=contended");
-    collector.record("hbase.rpcs",
-                     stats.atomicIncrements(), "type=increment");
-    collector.record("hbase.rpcs", stats.deletes(), "type=delete");
-    collector.record("hbase.rpcs", stats.gets(), "type=get");
-    collector.record("hbase.rpcs", stats.puts(), "type=put");
-    collector.record("hbase.rpcs", stats.appends(), "type=append");
-    collector.record("hbase.rpcs", stats.rowLocks(), "type=rowLock");
-    collector.record("hbase.rpcs", stats.scannersOpened(), "type=openScanner");
-    collector.record("hbase.rpcs", stats.scans(), "type=scan");
-    collector.record("hbase.rpcs.batched", stats.numBatchedRpcSent());
-    collector.record("hbase.flushes", stats.flushes());
-    collector.record("hbase.connections.created", stats.connectionsCreated());
-    collector.record("hbase.connections.idle_closed", stats.idleConnectionsClosed());
-    collector.record("hbase.nsre", stats.noSuchRegionExceptions());
-    collector.record("hbase.nsre.rpcs_delayed",
-                     stats.numRpcDelayedDueToNSRE());
-    collector.record("hbase.region_clients.open",
-        stats.regionClients());
-    collector.record("hbase.region_clients.idle_closed",
-        stats.idleConnectionsClosed());
 
     compactionq.collectStats(collector);
     // Collect Stats from Plugins
