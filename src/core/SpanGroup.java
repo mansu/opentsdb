@@ -20,6 +20,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.hbase.async.Bytes;
 import org.hbase.async.Bytes.ByteMap;
@@ -67,7 +68,7 @@ final class SpanGroup implements DataPoints {
    * in this group.
    * @see #computeTags
    */
-  private Map<String, String> tags;
+  private ConcurrentHashMap<String, String> tags;
   private ByteMap<byte[]> tag_uids;
 
   /**
@@ -301,9 +302,9 @@ final class SpanGroup implements DataPoints {
     updateTagsAndAggregatedTagsforYuvi(span.getTagsInTS());
   }
 
-  private void updateTagsAndAggregatedTagsforYuvi(final Map<String, String> tagsInTS) {
+  private synchronized void updateTagsAndAggregatedTagsforYuvi(final Map<String, String> tagsInTS) {
     if (tags == null || aggregated_tags == null) {
-      tags = new HashMap<String, String>();
+      tags = new ConcurrentHashMap<String, String>();
       aggregated_tags = new ArrayList<String>();
       for (Map.Entry<String, String> entry : tagsInTS.entrySet()) {
         tags.put(entry.getKey(), entry.getValue());
@@ -416,13 +417,16 @@ final class SpanGroup implements DataPoints {
   }
 
   public Deferred<Map<String, String>> getTagsAsync() {
+
     if (tags != null) {
-      return Deferred.fromResult(tags);
+      Map<String, String> tmpTags = new HashMap<String, String>(tags);
+      return Deferred.fromResult(tmpTags);
     }
 
     if (spans.isEmpty()) {
-      tags = new HashMap<String, String>(0);
-      return Deferred.fromResult(tags);
+      tags = new ConcurrentHashMap<String, String>(0);
+      Map<String, String> tmpTags = new HashMap<String, String>(tags);
+      return Deferred.fromResult(tmpTags);
     }
 
     if (tag_uids == null) {
@@ -633,7 +637,7 @@ final class SpanGroup implements DataPoints {
     if (tags != null) {
       return Deferred.fromResult(null);
     }
-    tags = new HashMap<String, String>(tag_uids.size());
+    tags = new ConcurrentHashMap<String, String>(tag_uids.size());
 
     final List<Deferred<Object>> deferreds =
         new ArrayList<Deferred<Object>>(tag_uids.size());
