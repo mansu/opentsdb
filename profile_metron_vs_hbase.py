@@ -3,18 +3,31 @@
 
 from datadiff import diff
 import json
+import logging
 import requests
 import sys
 from statsboard import defs
+import time
 
+
+logging.basicConfig(
+        format='%(asctime)s %(levelname)-8s %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S',
+        filename='/var/log/metron/python.log',
+        filemode='w',
+        level=logging.WARNING)
 
 def make_pair_request_and_compare_response(url_metron):
     # constuct the other url
     url_hbase = url_metron.replace('8080', '8081')
 
     # make request and get response
+    start_time = time.time()
     response_metron = json.loads(requests.get(url_metron).text)
+    metron_time = (time.time() - start_time) * 1000
+    start_time = time.time()
     response_hbase = json.loads(requests.get(url_hbase).text)
+    hbase_time = (time.time() - start_time) * 1000
 
     # drop the unnecessary fileds
     for r in response_metron:
@@ -37,6 +50,11 @@ def make_pair_request_and_compare_response(url_metron):
         r['data_points_cnt'] = len(r['datapoints'])
         for pair in r['datapoints']:
             pair[1] = int(pair[1])
+
+    if not response_metron:
+        logging.warning('[compare] empty %.2f %.2f %s' % (metron_time, hbase_time, url_metron))
+    else:
+        logging.warning('[compare] success %.2f %.2f %s' % (metron_time, hbase_time, url_metron))
 
     # calculate the diff
     df = diff(response_metron, response_hbase)
