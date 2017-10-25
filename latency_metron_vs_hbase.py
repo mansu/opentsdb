@@ -42,23 +42,23 @@ def collect_stats(metron_points, hbase_points, query):
 
 
 def main():
-    cmd_fmt = "grep 'elapsed ' %s | awk -F 'total, |INFO: |elapsed for ' '{print $3, $4}' | awk '{print $1, substr($0, index($0,$3))}'"
+    cmd_fmt = "awk '/success/ {print $6, $7, $8}' %s"
     request_to_time_mapping = {}
-    log_metron = sys.argv[1]
-    log_hbase = sys.argv[2]
-    for log_file in (log_metron, log_hbase):
-        result = subprocess.Popen(cmd_fmt % log_file, shell=True, stdout=subprocess.PIPE).stdout.read()
-        for line in result.split(os.linesep):
-            try:
-                time, query = line.split(" ", 1)
-            except:
-                continue
-            time = float(time)
-            if query not in request_to_time_mapping:
-                request_to_time_mapping[query] = {}
-            if log_file not in request_to_time_mapping[query]:
-                request_to_time_mapping[query][log_file] = []
-            request_to_time_mapping[query][log_file].append(time)
+    log_file = sys.argv[1]
+    result = subprocess.Popen(cmd_fmt % log_file, shell=True, stdout=subprocess.PIPE).stdout.read()
+    for line in result.split(os.linesep):
+        try:
+            metron_time, hbase_time, query = line.split(" ")
+        except:
+            continue
+        metron_time = float(metron_time)
+        hbase_time = float(hbase_time)
+        if query not in request_to_time_mapping:
+            request_to_time_mapping[query] = {}
+            request_to_time_mapping[query]['metron'] = []
+            request_to_time_mapping[query]['hbase'] = []
+        request_to_time_mapping[query]['metron'].append(metron_time)
+        request_to_time_mapping[query]['hbase'].append(hbase_time)
     metron_all_points = []
     metron_fs_points = []
     metron_pbs_points = []
@@ -67,8 +67,8 @@ def main():
     hbase_pbs_points = []
     stats = [('metron:length', 'metron:avg', 'metron:p50', 'metron:p90', 'metron:p99', 'metron:max', 'hbase:length', 'hbase:avg', 'hbase:p50', 'hbase:p90', 'hbase:p99', 'hbase:max', 'query')]
     for query, time_info in request_to_time_mapping.iteritems():
-        metron_points = time_info.get(log_metron)
-        hbase_points = time_info.get(log_hbase)
+        metron_points = time_info.get('metron')
+        hbase_points = time_info.get('hbase')
         if not metron_points or not hbase_points:
             continue
         stats.append(collect_stats(metron_points, hbase_points, query))
