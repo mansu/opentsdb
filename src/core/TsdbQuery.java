@@ -1085,12 +1085,6 @@ final class TsdbQuery implements Query {
         }
       }
 
-      LOG.info("group_bys = " + group_bys);
-
-      for (Span span : spans.values()) {
-        LOG.info(span.getFullMetricName());
-      }
-
 //      if (group_bys == null) {
       if (!isGroupBy) {
         // We haven't been asked to find groups, so let's put all the spans
@@ -1111,7 +1105,6 @@ final class TsdbQuery implements Query {
         return new SpanGroup[] { group };
       }
 
-      LOG.info("starting GroupBy");
       Map<String, SpanGroup> groups = new HashMap<String, SpanGroup>();
       for (Span span : spans.values()) {
 
@@ -1131,7 +1124,6 @@ final class TsdbQuery implements Query {
         }
         thegroup.add(span);
       }
-
 
       // Maps group value IDs to the SpanGroup for those values. Say we've
       // been asked to group by two things: foo=* bar=* Then the keys in this

@@ -144,7 +144,7 @@ public class YuviPlugin {
       }
     }
     final Query yuviquery = new Query(metricName, tagMatchers);
-    LOG.debug("startTime: {}, endTime: {}, metricName {}", startTime, endTime, metricName);
+    LOG.debug("startTime: {}, endTime: {}, query {}", startTime, endTime, yuviquery);
 
     List<TimeSeries> result = new ArrayList<TimeSeries>();
     final Future<List<TimeSeries>> future = executor.submit(new Callable() {
@@ -164,7 +164,13 @@ public class YuviPlugin {
       LOG.error(e.toString());
     }
 
-    LOG.debug("Response received from Yuvi");
+    int dataPointCount = 0;
+    for (TimeSeries ts: result){
+      dataPointCount = dataPointCount + ts.getPoints().size();
+    }
+    
+    LOG.debug("Response from Yuvi contains {} timeseries and {} data points.",
+      result.size(), dataPointCount);
 
     return result;
   }
