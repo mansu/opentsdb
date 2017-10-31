@@ -27,5 +27,5 @@ exec java -server -Xmx${HEAP_SIZE} -Xms${HEAP_SIZE} -XX:NewSize=${NEW_SIZE} -XX:
     -cp ${CP} -Dlogback.configurationFile=${LOGBACK_FILE} -Dstage_config=${STAGE_CONFIG_FILE} \
     -Dcom.sun.management.jmxremote -Dcom.sun.management.jmxremote.ssl=false \
     -Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.port=10102 \
-    -Dfile.encoding=UTF-8 -CPc\
+    -Dfile.encoding=UTF-8\
     ${JAVA_MAIN} --config=yuvi.conf
