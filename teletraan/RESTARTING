@@ -1,0 +1,5 @@
+#!/bin/bash
+
+mkdir -p /var/log/opentsdb-metron
+
+configure-serviceset -c teletraan/config/serviceset.conf 
