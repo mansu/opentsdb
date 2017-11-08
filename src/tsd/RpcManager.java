@@ -255,6 +255,7 @@ public final class RpcManager {
     final Boolean enableApi = tsdb.getConfig().getString("tsd.core.enable_api").equals("true");
     final Boolean enableUi = tsdb.getConfig().getString("tsd.core.enable_ui").equals("true");
     final Boolean enableDieDieDie = tsdb.getConfig().getString("tsd.no_diediedie").equals("false");
+    final Boolean isProxy = tsdb.getConfig().getString("tsd.storage.yuvi.is_proxy").equals("true");
 
     LOG.info("Mode: {}, HTTP UI Enabled: {}, HTTP API Enabled: {}", mode, enableUi, enableApi);
 
@@ -300,7 +301,6 @@ public final class RpcManager {
         http.put("api/annotations", annotation_rpc);
         http.put("api/config", new ShowConfig());
         http.put("api/dropcaches", dropcaches);
-        http.put("api/query", new QueryRpc());
         http.put("api/search", new SearchRpc());
         http.put("api/serializers", new Serializers());
         http.put("api/stats", stats);
@@ -308,6 +308,12 @@ public final class RpcManager {
         http.put("api/tree", new TreeRpc());
         http.put("api/uid", new UniqueIdRpc());
         http.put("api/version", version);
+
+        if (isProxy) {
+          http.put("api/query", new QueryProxyRpc());
+        } else {
+          http.put("api/query", new QueryRpc());
+        }
       }
     }
 
