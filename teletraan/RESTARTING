@@ -2,4 +2,5 @@
 
 mkdir -p /var/log/opentsdb-metron
 
-configure-serviceset -c teletraan/config/serviceset.conf 
+configure-serviceset -c teletraan/config/serviceset.conf  \
+    -e STAGE_CONFIG_FILE=$TELETRAAN_STAGE_CONFIG_FILE \
