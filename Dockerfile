@@ -8,7 +8,7 @@ ADD $ARTIFACT_PATH $WORKDIR
 # default cmd
 RUN apt-get update \
     && apt-get install --no-install-recommends -y --force-yes \
-        gnuplot
+        gnuplot wget
 
 # Install yourkit agent.
 RUN wget https://www.yourkit.com/download/YourKit-JavaProfiler-2017.02-b66.zip \
