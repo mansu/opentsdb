@@ -27,12 +27,12 @@
          <maxIndex>4</maxIndex>
       </rollingPolicy>
       <triggeringPolicy class="ch.qos.logback.core.rolling.SizeBasedTriggeringPolicy">
-         <maxFileSize>512MB</maxFileSize>
+         <maxFileSize>2GB</maxFileSize>
       </triggeringPolicy>
       <!-- encoders are assigned the type
        ch.qos.logback.classic.encoder.PatternLayoutEncoder by default -->
       <encoder>
-          <pattern>%d{HH:mm:ss.SSS} %-5level [%logger{0}.%M] - %msg%n</pattern>
+          <pattern>%d{HH:mm:ss.SSS} %-5level [%thread] [%logger{5}.%M] - %msg%n</pattern>
       </encoder>
   </appender>
   
