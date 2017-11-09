@@ -22,7 +22,7 @@
       <file>/var/log/opentsdb/opentsdb.log</file>
       <append>true</append>
       <rollingPolicy class="ch.qos.logback.core.rolling.FixedWindowRollingPolicy">
-         <fileNamePattern>/home/y/logs/opentsdb2/opentsdb.log.%i</fileNamePattern>
+         <fileNamePattern>/var/log/opentsdb/opentsdb.log.%i</fileNamePattern>
          <minIndex>1</minIndex>
          <maxIndex>4</maxIndex>
       </rollingPolicy>
@@ -32,9 +32,9 @@
       <!-- encoders are assigned the type
        ch.qos.logback.classic.encoder.PatternLayoutEncoder by default -->
       <encoder>
-         <pattern>%date{ISO8601} [%thread] %-5level [%logger{0}.%M] - %msg%n</pattern>
+          <pattern>%d{HH:mm:ss.SSS} %-5level [%logger{0}.%M] - %msg%n</pattern>
       </encoder>
-   </appender>
+  </appender>
   
   <!-- Appender for writing full and completed queries to a log file. To use it, make
        sure to set the "level" to "INFO" in QueryLog below. -->
@@ -65,10 +65,9 @@
   <!--<logger name="com.stumbleupon.async" level="INFO"/>-->
   
   <!-- Fallthrough root logger and router -->
-  <root level="WARN">
-    <appender-ref ref="STDOUT"/>
-    <!--<appender-ref ref="CYCLIC"/>-->
-    <!-- Uncomment to log to file -->
-    <!--<appender-ref ref="FILE"/>-->
+  <root level="INFO">
+      <!-- <appender-ref ref="STDOUT"/> -->
+      <appender-ref ref="CYCLIC"/>
+      <appender-ref ref="FILE"/>
   </root>
 </configuration>
