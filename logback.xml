@@ -17,12 +17,12 @@
     <MaxSize>1024</MaxSize>
   </appender>
   
-  <!-- Appender to write OpenTSDB data to a set of rotating log files -->
+  <!-- Appender to write Metron data to a set of rotating log files -->
   <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
-      <file>/var/log/opentsdb/opentsdb.log</file>
+      <file>/var/log/metron/metron.log</file>
       <append>true</append>
       <rollingPolicy class="ch.qos.logback.core.rolling.FixedWindowRollingPolicy">
-         <fileNamePattern>/var/log/opentsdb/opentsdb.log.%i</fileNamePattern>
+         <fileNamePattern>/var/log/metron/metron.log.%i</fileNamePattern>
          <minIndex>1</minIndex>
          <maxIndex>4</maxIndex>
       </rollingPolicy>
@@ -39,11 +39,11 @@
   <!-- Appender for writing full and completed queries to a log file. To use it, make
        sure to set the "level" to "INFO" in QueryLog below. -->
   <appender name="QUERY_LOG" class="ch.qos.logback.core.rolling.RollingFileAppender">
-    <file>/var/log/opentsdb/queries.log</file>
+    <file>/var/log/metron/queries.log</file>
     <append>true</append>
 
     <rollingPolicy class="ch.qos.logback.core.rolling.FixedWindowRollingPolicy">
-        <fileNamePattern>/var/log/opentsdb/queries.log.%i</fileNamePattern>
+        <fileNamePattern>/var/log/metron/queries.log.%i</fileNamePattern>
         <minIndex>1</minIndex>
         <maxIndex>4</maxIndex>
     </rollingPolicy>
