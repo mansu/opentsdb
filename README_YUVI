@@ -1,8 +1,12 @@
 Load Yuvi backed OpenTSDB in IntelliJ for development
 
-1. ./yuvi_compile.sh
-2. mvn exec:java -Dexec.mainClass="net.opentsdb.tools.TSDMain" -Dexec.args="--config=yuvi.conf"
-3. Sample query: http://localhost:4242/api/query?start=365d-ago&m=sum:metric1
+1. ./yuvi_package.sh
+2. rm src-main/net/opentsdb/tsd/client.
+3. load pom.xml in intelliJ. You should be able to start the main process in TSDMain
+
+Sample query:
+As soon as the server is up, you could test query
+http://localhost:4242/api/query?start=365d-ago&m=sum:metric1
 
 Development:
 
