@@ -68,8 +68,12 @@ def make_pair_request_and_compare_response(url_metron):
 
 
 def main():
+    from datetime import datetime, timedelta
+    curr_dt = datetime.now()
+    last_six_hour_dt = curr_dt - timedelta(hours = 6)
     dashboard_name = sys.argv[1]
-    request_url_prefix = 'http://viz-statsboard-metron-001:8080/raw?from=-1hour&until=&width=250'
+    request_url_prefix = 'http://viz-statsboard-metron-001:8080/raw?from=%s&until=%s&width=250' % (
+            last_six_hour_dt.strftime('%H:%M_%Y%m%d'), curr_dt.strftime('%H:%M_%Y%m%d'))
     defs.load_dashboards()
     print 'Building dashboard board data...'
     dashboard_data = defs.DASHBOARDS.get(dashboard_name)
