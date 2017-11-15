@@ -62,6 +62,7 @@ final class QueryProxyRpc implements HttpRpc {
     final String port = tsdb.getConfig().getString("tsd.network.port");
     final String uri = query.request().getUri();
     final URL url = new URL(String.format("http://%s:%s%s", host, port, uri));
+    LOG.info("Querying host {} for query {}", host, query);
     final HttpURLConnection con = (HttpURLConnection) url.openConnection();
 
     con.setRequestMethod(String.valueOf(query.method()));

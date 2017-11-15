@@ -51,7 +51,6 @@ public class YuviPlugin {
   }
 
   public YuviPlugin(Config config) {
-    timeoutSeconds = config.getLong("tsd.storage.yuvi.timeout_seconds");
     if (config.hasProperty(TSD_STORAGE_YUVI_MOCK_FOR_TEST) &&
         config.getBoolean(TSD_STORAGE_YUVI_MOCK_FOR_TEST)) {
       LOG.info("Mocked Yuvi is ready.");
@@ -63,6 +62,8 @@ public class YuviPlugin {
         && config.getBoolean(TSD_STORAGE_YUVI_IS_PROXY)) {
       return;
     }
+
+    timeoutSeconds = config.getLong("tsd.storage.yuvi.timeout_seconds");
 
     chunkManager = new ChunkManager(
         config.getString("tsd.storage.yuvi.chunk_data_prefix"),

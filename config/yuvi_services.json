@@ -1,4 +1,4 @@
 {
-    "ostrich.counters.serviceframework.followerservice.*": "metron-prod1-0a015294", 
-    "ostrich.counters.serviceframework.pinandboardservice.*": "metron-prod4-0a01e0d5"
+    "ostrich.metrics.serviceframework.followerservice.*": "metron-prod1-0a015294", 
+    "ostrich.metrics.serviceframework.pinandboardservice.*": "metron-prod4-0a01e0d5"
 }
