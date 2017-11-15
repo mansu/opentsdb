@@ -7,6 +7,8 @@ import org.jboss.netty.handler.codec.http.HttpMethod;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
 import org.json.simple.parser.ParseException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
@@ -24,13 +26,18 @@ import java.util.Map;
  * gather the result and return to the client
  */
 final class QueryProxyRpc implements HttpRpc {
+  private static final Logger LOG = LoggerFactory.getLogger(QueryProxyRpc.class);
+
+  private static final String proxyConfigFilePath = "config/yuvi_services.json";
 
   private static JSONObject yuviService = null;
 
+  private static String proxyConfig;
+
   static {
     try {
-      yuviService = (JSONObject)new JSONParser().parse(new FileReader("config/yuvi_services.json"));
-      System.out.println(yuviService);
+      yuviService = (JSONObject)new JSONParser().parse(new FileReader(proxyConfigFilePath));
+      LOG.info("Loaded config file {} with contents: {}", proxyConfigFilePath, yuviService);
     } catch (IOException e) {
       e.printStackTrace();
     } catch (ParseException e) {
