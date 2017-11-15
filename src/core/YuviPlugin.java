@@ -37,6 +37,8 @@ import java.util.concurrent.TimeoutException;
 public class YuviPlugin {
 
   private static final Logger LOG = LoggerFactory.getLogger(YuviPlugin.class);
+  public static final String TSD_STORAGE_YUVI_MOCK_FOR_TEST = "tsd.storage.yuvi.mock_for_test";
+  public static final String TSD_STORAGE_YUVI_IS_PROXY = "tsd.storage.yuvi.is_proxy";
 
   private ChunkManager chunkManager;
 
@@ -50,11 +52,18 @@ public class YuviPlugin {
 
   public YuviPlugin(Config config) {
     timeoutSeconds = config.getLong("tsd.storage.yuvi.timeout_seconds");
-    if (config.hasProperty("tsd.storage.yuvi.mock_for_test") &&
-        config.getBoolean("tsd.storage.yuvi.mock_for_test")) {
+    if (config.hasProperty(TSD_STORAGE_YUVI_MOCK_FOR_TEST) &&
+        config.getBoolean(TSD_STORAGE_YUVI_MOCK_FOR_TEST)) {
       LOG.info("Mocked Yuvi is ready.");
       return;
     }
+
+    // Don't initialize YuviPlugin if it's a proxy.
+    if(config.hasProperty(TSD_STORAGE_YUVI_IS_PROXY)
+        && config.getBoolean(TSD_STORAGE_YUVI_IS_PROXY)) {
+      return;
+    }
+
     chunkManager = new ChunkManager(
         config.getString("tsd.storage.yuvi.chunk_data_prefix"),
         config.getInt("tsd.storage.yuvi.expected_tag_store_size"));
