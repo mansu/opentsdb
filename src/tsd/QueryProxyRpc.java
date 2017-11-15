@@ -57,6 +57,7 @@ final class QueryProxyRpc implements HttpRpc {
     throws IOException {
     final String host = getHostByQuery(query);
     if (host == null) {
+      LOG.info("Unable to determine host to route to. Failing request");
       return;
     }
     final String port = tsdb.getConfig().getString("tsd.network.port");
