@@ -11,7 +11,7 @@ RUN apt-get update \
         gnuplot wget unzip
 
 # Install yourkit agent.
-RUN wget https://www.yourkit.com/download/YourKit-JavaProfiler-2017.02-b66.zip \
+RUN wget https://www.yourkit.com/download/YourKit-JavaProfiler-2017.02-b68.zip \
     && unzip YourKit-JavaProfiler-2017.02-b66.zip \
     && sudo mv YourKit-JavaProfiler-2017.02 /opt/yjp/
 
