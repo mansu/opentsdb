@@ -67,7 +67,8 @@ public class YuviPlugin {
 
     chunkManager = new ChunkManager(
         config.getString("tsd.storage.yuvi.chunk_data_prefix"),
-        config.getInt("tsd.storage.yuvi.expected_tag_store_size"));
+        config.getInt("tsd.storage.yuvi.expected_tag_store_size"),
+        config.getString("tsd.storage.yuvi.data_dir"));
 
     String yuviConsumer = config.getString("tsd.storage.yuvi.consumer");
     LOG.info("Starting Yuvi plugin.");
@@ -86,7 +87,10 @@ public class YuviPlugin {
       final ScheduledExecutorService offHeapChunkManagerScheduler =
               Executors.newScheduledThreadPool(1);
       final OffHeapChunkManagerTask offHeapChunkManagerTask =
-            new OffHeapChunkManagerTask(chunkManager);
+            new OffHeapChunkManagerTask(chunkManager,
+                OffHeapChunkManagerTask.DEFAULT_METRICS_DELAY_SECS,
+                24 * 60 * 60);
+
       offHeapChunkManagerScheduler.scheduleAtFixedRate(offHeapChunkManagerTask,
               offHeapTaskRateMinutes,
               offHeapTaskRateMinutes, TimeUnit.MINUTES);
