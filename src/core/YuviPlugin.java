@@ -89,7 +89,7 @@ public class YuviPlugin {
       final OffHeapChunkManagerTask offHeapChunkManagerTask =
             new OffHeapChunkManagerTask(chunkManager,
                 OffHeapChunkManagerTask.DEFAULT_METRICS_DELAY_SECS,
-                24 * 60 * 60);
+                24 * 60 * 60); // TODO: Make it a config value.
 
       offHeapChunkManagerScheduler.scheduleAtFixedRate(offHeapChunkManagerTask,
               offHeapTaskRateMinutes,
