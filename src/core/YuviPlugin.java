@@ -39,10 +39,12 @@ public class YuviPlugin {
   private static final Logger LOG = LoggerFactory.getLogger(YuviPlugin.class);
   public static final String TSD_STORAGE_YUVI_MOCK_FOR_TEST = "tsd.storage.yuvi.mock_for_test";
   public static final String TSD_STORAGE_YUVI_IS_PROXY = "tsd.storage.yuvi.is_proxy";
+  public static final String TSD_STORAGE_YUVI_RETENTION_SECS = "tsd.storage.yuvi.retention_seconds";
 
   private ChunkManager chunkManager;
 
   private long timeoutSeconds;
+  private long retentionPeriodInSecs;
 
   private final ExecutorService executor = Executors.newCachedThreadPool();
 
@@ -82,6 +84,8 @@ public class YuviPlugin {
           config.getString("tsd.storage.yuvi.kafka_auto_commit.interval"),
           config.getString("tsd.storage.yuvi.kafka_session_timeout"));
 
+      retentionPeriodInSecs = config.getInt(TSD_STORAGE_YUVI_RETENTION);
+
       final int offHeapTaskRateMinutes =
             config.getInt("tsd.storage.yuvi.offHeapTaskRateMinutes");
       final ScheduledExecutorService offHeapChunkManagerScheduler =
@@ -89,7 +93,7 @@ public class YuviPlugin {
       final OffHeapChunkManagerTask offHeapChunkManagerTask =
             new OffHeapChunkManagerTask(chunkManager,
                 OffHeapChunkManagerTask.DEFAULT_METRICS_DELAY_SECS,
-                24 * 60 * 60); // TODO: Make it a config value.
+                retentionPeriodInSecs);
 
       offHeapChunkManagerScheduler.scheduleAtFixedRate(offHeapChunkManagerTask,
               offHeapTaskRateMinutes,
