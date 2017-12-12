@@ -44,7 +44,7 @@ public class YuviPlugin {
   private ChunkManager chunkManager;
 
   private long timeoutSeconds;
-  private long retentionPeriodInSecs;
+  private int retentionPeriodInSecs;
 
   private final ExecutorService executor = Executors.newCachedThreadPool();
 
@@ -84,7 +84,7 @@ public class YuviPlugin {
           config.getString("tsd.storage.yuvi.kafka_auto_commit.interval"),
           config.getString("tsd.storage.yuvi.kafka_session_timeout"));
 
-      retentionPeriodInSecs = config.getInt(TSD_STORAGE_YUVI_RETENTION);
+      retentionPeriodInSecs = config.getInt(TSD_STORAGE_YUVI_RETENTION_SECS);
 
       final int offHeapTaskRateMinutes =
             config.getInt("tsd.storage.yuvi.offHeapTaskRateMinutes");
