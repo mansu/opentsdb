@@ -4,7 +4,7 @@
 
 ulimit -n 65536
 
-export SERVICENAME=${SERVICENAME:=opentsdb-metron}
+export SERVICENAME=${SERVICENAME:=metron}
 export JAVA_MAIN=${JAVA_MAIN:=net.opentsdb.tools.TSDMain}
 export LOGBACK_FILE=${LOGBACK_FILE:=logback.xml}
 HEAP_SIZE=${HEAP_SIZE:=512m}

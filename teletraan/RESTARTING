@@ -1,6 +1,6 @@
 #!/bin/bash
 
-mkdir -p /var/log/opentsdb-metron
+mkdir -p /var/log/metron/data
 
 configure-serviceset -c teletraan/config/serviceset.conf  \
     -e STAGE_CONFIG_FILE=$TELETRAAN_STAGE_CONFIG_FILE \
